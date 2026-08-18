@@ -1,0 +1,63 @@
+{
+	"name": "renex pokey",
+	"folder": "gm82",
+	"version": "0.1",
+	"author": "renex",
+	"date": "18/08/2026",
+	"license": "Free to use, also for commercial games.",
+	"description": "pokey sound chip emulator",
+	"helpfile": "",
+	"hidden": false,
+	"dependencies": [],
+	"files": [
+		{
+			"filename": "renex-pokey.gml",
+			"origname": "source\\renex-pokey.gml",
+			"kind": 2,
+			"init": "__pokey_gml_init",
+			"final": "",
+			"functions": [
+				{
+					"name": "__pokey_gml_init",
+					"extname": "",
+					"calltype": 2,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": null,
+					"returntype": 2
+				}
+			],
+			"constants": []
+		},
+		{
+			"filename": "renex-pokey.dll",
+			"origname": "build\\Release\\renex-pokey.dll",
+			"kind": 1,
+			"init": "",
+			"final": "",
+			"functions": [
+				{
+					"name": "__pokey_dll_init",
+					"extname": "",
+					"calltype": 12,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [
+						2
+					],
+					"returntype": 2
+				},
+				{
+					"name": "__pokey_update",
+					"extname": "",
+					"calltype": 12,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [],
+					"returntype": 2
+				}
+			],
+			"constants": []
+		}
+	]
+}
