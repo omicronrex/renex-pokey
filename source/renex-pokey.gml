@@ -8,7 +8,7 @@
 #define __pokey_step
     if (!__pokey_init) {
         __pokey_init=true
-        __pokey_dll_init(window_handle())        
+        __pokey_dll_init(window_handle(),22050)        
     }
     //var __now;__now=get_timer()
     __pokey_update()//(__now-global.__gm82audio_last_update)/1000)
