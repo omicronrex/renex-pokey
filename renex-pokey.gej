@@ -3,12 +3,14 @@
 	"folder": "gm82",
 	"version": "0.1",
 	"author": "renex",
-	"date": "18/08/2026",
+	"date": "19/08/2026",
 	"license": "Free to use, also for commercial games.",
 	"description": "pokey sound chip emulator",
 	"helpfile": "",
 	"hidden": false,
-	"dependencies": [],
+	"dependencies": [
+		"Game Maker 8.2 Core"
+	],
 	"files": [
 		{
 			"filename": "renex-pokey.gml",
@@ -19,6 +21,15 @@
 			"functions": [
 				{
 					"name": "__pokey_gml_init",
+					"extname": "",
+					"calltype": 2,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": null,
+					"returntype": 2
+				},
+				{
+					"name": "__pokey_step",
 					"extname": "",
 					"calltype": 2,
 					"helpline": "",

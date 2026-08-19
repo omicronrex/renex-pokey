@@ -1,7 +1,7 @@
 #define __pokey_gml_init
     globalvar __pokey_init;
     
-    //object_event_add(gm82core_object,ev_step,ev_step_end,"__pokey_step()")
+    object_event_add(gm82core_object,ev_step,ev_step_end,"__pokey_step()")
     //global.__pokey_last_update=get_timer()
 
 
