@@ -32,7 +32,12 @@ LPDIRECTSOUNDBUFFER PrimaryBuffer;
 LPDIRECTSOUNDBUFFER SecondaryBuffer;
 DSBUFFERDESC BufferDescriptor;
 WAVEFORMATEX FormatDescriptor;
-char* TertiaryBuffer;
+unsigned char* TertiaryBuffer;
+
+void* lock_chunk1;
+DWORD lock_size1;
+void* lock_chunk2;
+DWORD lock_size2;
 
 
 //-------------------------------------------------------------------------//
@@ -40,7 +45,8 @@ char* TertiaryBuffer;
 
 DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size);
 WAVEFORMATEX* describe_format();
-void secondary_buffer_fill(char* data);
+int secondary_buffer_lock();
+void secondary_buffer_fill();
 void timer_callback(HWND a,UINT b,UINT_PTR c,DWORD ms);
 
 
