@@ -15,9 +15,9 @@
 bool __vibe_check(const wchar_t* file, int line, HRESULT hr);
 #define vibe_check(a) __vibe_check(WFILE,__LINE__,a)
 extern bool __vibe_check(const wchar_t* file, int line, HRESULT hr) {
-    if (SUCCEEDED(hr)) return false;    
+    if (SUCCEEDED(hr)) return false;
     wchar_t buf[1024];
-    _snwprintf_s(buf, 1024, L"DirectSound error in file %s at line %i:\nHRESULT = 0x%08X",file,line,hr);
+    _snwprintf_s(buf, 1024, L"DirectSound error in file %s at line %i:\nHRESULT = 0x%08X", file, line, hr);
     MessageBoxW(0, buf, L"Warning", 0);
     exit(1);
     return true;
@@ -33,6 +33,7 @@ LPDIRECTSOUNDBUFFER SecondaryBuffer;
 DSBUFFERDESC BufferDescriptor;
 WAVEFORMATEX FormatDescriptor;
 unsigned char* TertiaryBuffer;
+int buffer_length;
 
 void* lock_chunk1;
 DWORD lock_size1;
@@ -43,11 +44,12 @@ DWORD lock_size2;
 //-------------------------------------------------------------------------//
 
 
-DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size);
-WAVEFORMATEX* describe_format();
 int secondary_buffer_lock();
 void secondary_buffer_fill();
-void timer_callback(HWND a,UINT b,UINT_PTR c,DWORD ms);
+void timer_callback(HWND a, UINT b, UINT_PTR c, DWORD ms);
+
+void pokey_startup();
+void pokey_engine(int amount);
 
 
 //-------------------------------------------------------------------------//
@@ -63,11 +65,11 @@ DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
     return &BufferDescriptor;
 }
 
-WAVEFORMATEX* describe_format() {
+WAVEFORMATEX* describe_format(int sample_rate) {
     memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
     FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
     FormatDescriptor.nChannels = 1;
-    FormatDescriptor.nSamplesPerSec = 22050;
+    FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
     FormatDescriptor.wBitsPerSample = 8;
     FormatDescriptor.nBlockAlign = (FormatDescriptor.wBitsPerSample / 8) * FormatDescriptor.nChannels;
     FormatDescriptor.nAvgBytesPerSec = FormatDescriptor.nSamplesPerSec * FormatDescriptor.nBlockAlign;
