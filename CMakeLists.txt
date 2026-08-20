@@ -7,8 +7,6 @@ set(CMAKE_CXX_FLAGS "/O2 /W2 /WX /EHsc")
 
 add_library(renex-pokey SHARED source/renex-pokey.cpp)
 
-option(INSTALL_GEX "Install the generated .gex" ON)
-
 find_package(Python COMPONENTS Interpreter)
 
 set(GEX_URL https://raw.githubusercontent.com/GM82Project/gm82gex/main/gm82gex.py)
@@ -19,22 +17,4 @@ if(${STATUS_CODE} EQUAL 0)
 	file(DOWNLOAD ${GEX_URL} ${GEX_PY})
 else()
 	message(WARNING "Couldn't redownload gm82gex.py")
-endif()
-
-if (INSTALL_GEX)
-	add_custom_command(
-		TARGET renex-pokey
-		POST_BUILD
-		COMMAND ${Python_EXECUTABLE} ${GEX_PY} renex-pokey.gej
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		COMMENT "Building .gex"
-	)
-else()
-	add_custom_command(
-		TARGET renex-pokey
-		POST_BUILD
-		COMMAND ${Python_EXECUTABLE} ${GEX_PY} renex-pokey.gej --noinstall
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		COMMENT "Building .gex"
-	)
 endif()
