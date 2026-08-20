@@ -72,44 +72,20 @@ volatile pokey_settings
 //-------------------------------------------------------------------------//
 //function prototypes
 
-void dll_init(HWND, int);
-void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD);
+DSBUFFERDESC* describe_buffer(DWORD, WAVEFORMATEX*, DWORD);
+WAVEFORMATEX* describe_format(int);
 
+void dll_init(HWND, int);
 int secondary_buffer_query();
 void secondary_buffer_fill(int);
+void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD);
+void copy_settings(volatile pokey_settings*,volatile pokey_settings*);
 
 void pokey_init();
+void pokey_set_channel(int, unsigned char, unsigned char, float, float);
+void pokey_push_settings();
 void pokey_update();
 void pokey_generate(int);
-
-
-//-------------------------------------------------------------------------//
-//helpers for annoying struct spam
-
-
-DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
-    memset(&BufferDescriptor,0,sizeof(BufferDescriptor));
-    BufferDescriptor.dwFlags = flags;
-    BufferDescriptor.dwBufferBytes = size;
-    BufferDescriptor.lpwfxFormat = format;
-    BufferDescriptor.dwReserved = 0;
-    BufferDescriptor.dwSize = sizeof(DSBUFFERDESC);
-    return &BufferDescriptor;
-}
-
-WAVEFORMATEX* describe_format(int sample_rate) {
-    memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
-    FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
-    FormatDescriptor.nChannels = 1;
-    FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
-    FormatDescriptor.wBitsPerSample = 8;
-    FormatDescriptor.nBlockAlign =
-        (FormatDescriptor.wBitsPerSample / 8) * FormatDescriptor.nChannels;
-    FormatDescriptor.nAvgBytesPerSec =
-        FormatDescriptor.nSamplesPerSec * FormatDescriptor.nBlockAlign;
-    FormatDescriptor.cbSize = 0;
-    return &FormatDescriptor;
-}
 
 
 //-------------------------------------------------------------------------//
@@ -167,6 +143,30 @@ void dll_init(HWND hwnd,int sample_rate) {
         TertiaryBuffer = (unsigned char*)malloc(buffer_length);
         pokey_update();
         vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
+}
+
+DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
+    memset(&BufferDescriptor,0,sizeof(BufferDescriptor));
+    BufferDescriptor.dwFlags = flags;
+    BufferDescriptor.dwBufferBytes = size;
+    BufferDescriptor.lpwfxFormat = format;
+    BufferDescriptor.dwReserved = 0;
+    BufferDescriptor.dwSize = sizeof(DSBUFFERDESC);
+    return &BufferDescriptor;
+}
+
+WAVEFORMATEX* describe_format(int sample_rate) {
+    memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
+    FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
+    FormatDescriptor.nChannels = 1;
+    FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
+    FormatDescriptor.wBitsPerSample = 8;
+    FormatDescriptor.nBlockAlign =
+        (FormatDescriptor.wBitsPerSample / 8) * FormatDescriptor.nChannels;
+    FormatDescriptor.nAvgBytesPerSec =
+        FormatDescriptor.nSamplesPerSec * FormatDescriptor.nBlockAlign;
+    FormatDescriptor.cbSize = 0;
+    return &FormatDescriptor;
 }
 
 int secondary_buffer_query() {
@@ -255,31 +255,25 @@ void copy_settings(volatile pokey_settings* struct1,volatile pokey_settings* str
 
 
 GMREAL __pokey_dll_init(double hwnd_real,double sample_rate_real) {
-    HWND hwnd = (HWND)((int)hwnd_real);
-    int sample_rate = (int)sample_rate_real;
-    
-    dll_init(hwnd,sample_rate);
+    dll_init((HWND)((int)hwnd_real),(int)sample_rate_real);
     
     return 0;
 }
 
 GMREAL __pokey_dll_update() {
-    //wait till we are allowed
-        while (pokey_settings_b.ready) Sleep(1);
-    
-    //update mailbox
-        copy_settings(&pokey_settings_b,&pokey_settings_a);
+    pokey_push_settings();    
     
     return 0;
 }
 
-GMREAL pokey_sound(double channel,double type,double freq,double vol,double pan) {
-    int i = (int)channel;
-    
-    pokey_settings_a.chan_type[i] = (unsigned char)type;
-    pokey_settings_a.chan_freq[i] = (unsigned char)freq;
-    pokey_settings_a.chan_vol[i] = (float)vol;
-    pokey_settings_a.chan_pan[i] = (float)pan;
+GMREAL __pokey_sound(double channel,double type,double freq,double vol,double pan) {
+    pokey_set_channel(
+        (int)channel,
+        (unsigned char)type,
+        (unsigned char)freq,
+        (float)vol,
+        (float)pan
+    );
     
     return 0;
 }
@@ -303,6 +297,19 @@ void pokey_init() {
         }
         pokey_settings_a.ready=true;
         copy_settings(&pokey_settings_b,&pokey_settings_a);        
+}
+
+void pokey_set_channel(int channel, unsigned char type, unsigned char freq, float vol, float pan) {
+    pokey_settings_a.chan_type[channel] = type;
+    pokey_settings_a.chan_freq[channel] = freq;
+    pokey_settings_a.chan_vol[channel] = vol;
+    pokey_settings_a.chan_pan[channel] = pan;
+}
+
+void pokey_push_settings() {
+    //update mailbox if allowed
+        if (pokey_settings_b.ready == false)
+            copy_settings(&pokey_settings_b,&pokey_settings_a);
 }
 
 void pokey_update() {
