@@ -33,6 +33,19 @@ extern bool __vibe_check(const wchar_t* file, int line, HRESULT hr) {
 
 
 //-------------------------------------------------------------------------//
+//types
+
+
+struct pokey_settings {
+    unsigned char chan_type[4];
+    unsigned char chan_freq[4];
+    float chan_vol[4];
+    float chan_pan[4];
+    char ready;
+};
+
+
+//-------------------------------------------------------------------------//
 //global variables
 
 
@@ -48,6 +61,13 @@ int buffer_length;
 int buffer_amount;
 int buffer_lastpos;
 
+//mailbox system for thread data transfer
+int pokey_settings_sizeof;
+volatile pokey_settings
+    pokey_settings_a,
+    pokey_settings_b,
+    pokey_settings_c;
+
 
 //-------------------------------------------------------------------------//
 //function prototypes
@@ -59,7 +79,8 @@ int secondary_buffer_query();
 void secondary_buffer_fill(int);
 
 void pokey_init();
-void pokey_engine(int);
+void pokey_update();
+void pokey_generate(int);
 
 
 //-------------------------------------------------------------------------//
@@ -100,6 +121,7 @@ void dll_init(HWND hwnd,int sample_rate) {
         update_interval = 15;    
         buffer_amount = (int)((sample_rate / 1000.0) * update_interval * 2.0);
         buffer_lastpos = 0;
+        pokey_settings_sizeof = sizeof(pokey_settings);
     
     
     //initialize directsound
@@ -107,7 +129,7 @@ void dll_init(HWND hwnd,int sample_rate) {
         vibe_check(Device -> SetCooperativeLevel(hwnd, DSSCL_PRIORITY));
     
     
-    //create the primary buffer
+    //create the two dsound buffers
         vibe_check(Device -> CreateSoundBuffer(
             describe_buffer(
                 DSBCAPS_PRIMARYBUFFER,
@@ -118,10 +140,10 @@ void dll_init(HWND hwnd,int sample_rate) {
             NULL
         ));
         vibe_check(PrimaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
-    
-    
-    //create the quarter-second secondary buffer
-        buffer_length = buffer_amount*2;
+        
+        //about a 4x safety border (like 8 frames)
+        buffer_length = buffer_amount*4;
+        
         vibe_check(Device -> CreateSoundBuffer(
             describe_buffer(
                 DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2,
@@ -133,19 +155,18 @@ void dll_init(HWND hwnd,int sample_rate) {
         ));
     
     
-    //silence,    buffer
-        TertiaryBuffer = (unsigned char*)malloc(buffer_length);
-        memset(TertiaryBuffer, 128, buffer_length);
-        secondary_buffer_fill(buffer_length);
-        vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
-    
-    
     //start engine
         pokey_init();
     
     
     //set up callback for refilling the secondary buffer
         timeSetEvent(update_interval,update_interval,timer_callback,0,TIME_PERIODIC);
+    
+    
+    //start buffer
+        TertiaryBuffer = (unsigned char*)malloc(buffer_length);
+        pokey_update();
+        vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
 }
 
 int secondary_buffer_query() {
@@ -216,12 +237,16 @@ void secondary_buffer_fill(int amount) {
 }
 
 void CALLBACK timer_callback(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD dw2) {
-    //fill buffer as necessary
-        int amount = secondary_buffer_query();
-        if (amount) {
-            pokey_engine(amount);
-            secondary_buffer_fill(amount);
-        }
+    pokey_update();
+}
+
+void copy_settings(volatile pokey_settings* struct1,volatile pokey_settings* struct2) {
+    char* A = (char*)struct1;
+    char* B = (char*)struct2;
+    
+    for (int i=0;i<pokey_settings_sizeof;++i) {
+        B[i]=A[i];
+    }
 }
 
 
@@ -238,6 +263,27 @@ GMREAL __pokey_dll_init(double hwnd_real,double sample_rate_real) {
     return 0;
 }
 
+GMREAL __pokey_dll_update() {
+    //wait till we are allowed
+        while (pokey_settings_b.ready) Sleep(1);
+    
+    //update mailbox
+        copy_settings(&pokey_settings_b,&pokey_settings_a);
+    
+    return 0;
+}
+
+GMREAL pokey_sound(double channel,double type,double freq,double vol,double pan) {
+    int i = (int)channel;
+    
+    pokey_settings_a.chan_type[i] = (unsigned char)type;
+    pokey_settings_a.chan_freq[i] = (unsigned char)freq;
+    pokey_settings_a.chan_vol[i] = (float)vol;
+    pokey_settings_a.chan_pan[i] = (float)pan;
+    
+    return 0;
+}
+
 
 //-------------------------------------------------------------------------//
 //POKEY Engine
@@ -248,14 +294,40 @@ int pok_state;
 void pokey_init() {
     //initialize engine variables
         pok_state = 0;
+        
+        for (int i=0;i<4;++i) {
+            pokey_settings_a.chan_type[i]=0;
+            pokey_settings_a.chan_freq[i]=0;
+            pokey_settings_a.chan_vol[i]=0;
+            pokey_settings_a.chan_pan[i]=0;
+        }
+        pokey_settings_a.ready=true;
+        copy_settings(&pokey_settings_b,&pokey_settings_a);        
 }
 
-void pokey_engine(int amount) {
+void pokey_update() {
+    //fill buffer as necessary
+        int amount = secondary_buffer_query();
+        if (amount) {
+            if (pokey_settings_b.ready) {
+                copy_settings(&pokey_settings_c,&pokey_settings_b);
+                pokey_settings_b.ready=false;
+            }
+            pokey_generate(amount);
+            secondary_buffer_fill(amount);
+        }
+}
+
+void pokey_generate(int amount) {
+    //pokey_settings_c etc.
     //test tone
         int i = 0;
         while (i < amount) {
-            pok_state = (pok_state + 1) % 256;
-            TertiaryBuffer[i] = 128 + ((pok_state % 32 < 18) ? 5 : -5);
+            pok_state = (pok_state + 1) % 1024;
+            if (pok_state<512)
+                TertiaryBuffer[i] = 128 + ((pok_state % 32 < 18) ? 5 : -5);
+            else
+                TertiaryBuffer[i] = 128 + ((pok_state % 64 < 36) ? 5 : -5);
         i += 1;}
 }
 
