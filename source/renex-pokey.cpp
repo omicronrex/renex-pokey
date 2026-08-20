@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #pragma comment(lib,"dsound.lib")
-#pragma comment(lib,"User32.lib")
+#pragma comment(lib,"Winmm.lib")
 
 #define GMREAL extern "C" __declspec(dllexport) double __cdecl
 #define GMSTR extern "C" __declspec(dllexport) char* __cdecl
@@ -43,25 +43,23 @@ DSBUFFERDESC BufferDescriptor;
 WAVEFORMATEX FormatDescriptor;
 unsigned char* TertiaryBuffer;
 
-void* lock_chunk1;
-DWORD lock_size1;
-void* lock_chunk2;
-DWORD lock_size2;
-
+int update_interval;
 int buffer_length;
+int buffer_amount;
+int buffer_lastpos;
 
 
 //-------------------------------------------------------------------------//
 //function prototypes
 
-void dll_init(HWND hwnd,int samplerate);
-void timer_callback(HWND a, UINT b, UINT_PTR c, DWORD ms);
+void dll_init(HWND, int);
+void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD);
 
-int secondary_buffer_lock();
-void secondary_buffer_fill();
+int secondary_buffer_query();
+void secondary_buffer_fill(int);
 
 void pokey_init();
-void pokey_engine(int amount);
+void pokey_engine(int);
 
 
 //-------------------------------------------------------------------------//
@@ -98,7 +96,10 @@ WAVEFORMATEX* describe_format(int sample_rate) {
 
 
 void dll_init(HWND hwnd,int sample_rate) {
-    int update_interval = 15;
+    //initialize some globals
+        update_interval = 15;    
+        buffer_amount = (int)((sample_rate / 1000.0) * update_interval * 2.0);
+        buffer_lastpos = 0;
     
     
     //initialize directsound
@@ -119,11 +120,11 @@ void dll_init(HWND hwnd,int sample_rate) {
         vibe_check(PrimaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
     
     
-    //create the secondary buffer
-        buffer_length = (int)((sample_rate / 1000.0) * update_interval * 2.0);
+    //create the quarter-second secondary buffer
+        buffer_length = buffer_amount*2;
         vibe_check(Device -> CreateSoundBuffer(
             describe_buffer(
-                DSBCAPS_GLOBALFOCUS,
+                DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2,
                 describe_format(sample_rate),
                 buffer_length
             ),
@@ -135,8 +136,7 @@ void dll_init(HWND hwnd,int sample_rate) {
     //silence,    buffer
         TertiaryBuffer = (unsigned char*)malloc(buffer_length);
         memset(TertiaryBuffer, 128, buffer_length);
-        secondary_buffer_lock();
-        secondary_buffer_fill();
+        secondary_buffer_fill(buffer_length);
         vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
     
     
@@ -145,38 +145,63 @@ void dll_init(HWND hwnd,int sample_rate) {
     
     
     //set up callback for refilling the secondary buffer
-        SetTimer(NULL, 1, update_interval, (TIMERPROC)timer_callback);
+        timeSetEvent(update_interval,update_interval,timer_callback,0,TIME_PERIODIC);
 }
 
-int secondary_buffer_lock() {
-    //acquire control of secondary buffer
-        HRESULT err = SecondaryBuffer -> Lock(
-            0,
-            buffer_length,
-            &lock_chunk1, &lock_size1,
-            &lock_chunk2, &lock_size2,
-            0
-        );
-    
-    
-    //restore and acquire buffer if it's been lost
-        if (err == DSERR_BUFFERLOST) {
+int secondary_buffer_query() {
+    //restore a lost buffer
+        DWORD status;
+        SecondaryBuffer -> GetStatus(&status);
+        if (status == DSERR_BUFFERLOST) {
             SecondaryBuffer -> Restore();
-            vibe_check(SecondaryBuffer -> Lock(
-                0,
-                buffer_length,
-                &lock_chunk1, &lock_size1,
-                &lock_chunk2, &lock_size2,
-                0
-            ));
+        }
+    
+    
+    //get head position, calculate size to write
+        DWORD play_head;
+        
+        vibe_check(SecondaryBuffer -> GetCurrentPosition(&play_head,NULL));
+        
+        DWORD writewrap;
+        
+        if (buffer_lastpos<play_head) {
+            //wrapped
+            writewrap = buffer_lastpos + buffer_length;
+        } else {
+            writewrap = buffer_lastpos;
+        }        
+        
+        DWORD write_size = (play_head + buffer_amount) - writewrap;
+    
+    
+    //if we're running too fast, nop out
+        if (write_size<=0) {            
+            return 0;
         }
     
     
     //size of required buffer fill
-        return lock_size1 + lock_size2;
+        return write_size;
 }
 
-void secondary_buffer_fill() {
+void secondary_buffer_fill(int amount) {
+    void* lock_chunk1;
+    DWORD lock_size1;
+    void* lock_chunk2;
+    DWORD lock_size2;
+
+    //acquire control of secondary buffer
+        vibe_check(SecondaryBuffer -> Lock(
+            buffer_lastpos,
+            amount,
+            &lock_chunk1, &lock_size1,
+            &lock_chunk2, &lock_size2,
+            0
+        ));
+        
+        buffer_lastpos = (buffer_lastpos + amount) % buffer_length;
+    
+    
     //copy tertiary data to both chunks of secondary buffer
         memcpy(lock_chunk1, TertiaryBuffer, lock_size1);
         if (lock_chunk2 != NULL)
@@ -190,10 +215,13 @@ void secondary_buffer_fill() {
         ));
 }
 
-void timer_callback(HWND a, UINT b, UINT_PTR c, DWORD ms) {
-    //set up update timer
-        pokey_engine(secondary_buffer_lock());
-        secondary_buffer_fill();
+void CALLBACK timer_callback(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD dw2) {
+    //fill buffer as necessary
+        int amount = secondary_buffer_query();
+        if (amount) {
+            pokey_engine(amount);
+            secondary_buffer_fill(amount);
+        }
 }
 
 
