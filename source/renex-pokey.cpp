@@ -1,3 +1,18 @@
+//---------------------------------------------------------------------------//
+/*
+
+    RENEX POKEY
+    ===========
+    18 Aug 2026
+    
+    A modern, high quality reimplementation of a POKEY-style sound engine.
+    
+    Designed for use with Game Maker 8.2.
+
+*/
+//---------------------------------------------------------------------------//
+
+
 #include <windows.h>
 #include <dsound.h>
 #include <stdio.h>
@@ -9,6 +24,16 @@
 #define GMSTR extern "C" __declspec(dllexport) char* __cdecl
 
 
+//---------------------------------------------------------------------------//
+/*todo
+
+- wrap all dll functions in gml helpers that also check ranges and etc.
+- abstract channel count into an init setting
+- have a separate entrypoint that initializes memory so you can use setup
+  functions before directsound is initialized with the hwnd
+- double buffer width, implement stereo sound, implement panning
+
+*/
 //---------------------------------------------------------------------------//
 //debug helpers 🖐
 
@@ -60,13 +85,15 @@ int update_interval;
 int buffer_length;
 int buffer_amount;
 int buffer_lastpos;
+int buffer_sample_rate;
+
 
 //mailbox system for thread data transfer
-int pokey_settings_sizeof;
-volatile pokey_settings
-    pokey_settings_a,
-    pokey_settings_b,
-    pokey_settings_c;
+    int pokey_settings_sizeof;
+    volatile pokey_settings
+        pokey_settings_a,
+        pokey_settings_b,
+        pokey_settings_c;
 
 
 //---------------------------------------------------------------------------//
@@ -77,6 +104,7 @@ DSBUFFERDESC* describe_buffer(DWORD, WAVEFORMATEX*, DWORD);
 WAVEFORMATEX* describe_format(int);
 
 void dll_init(HWND, int);
+
 int secondary_buffer_query();
 void secondary_buffer_fill(int);
 void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD);
@@ -95,8 +123,9 @@ void pokey_generate(int);
 
 void dll_init(HWND hwnd,int sample_rate) {
     //initialize some globals
-        update_interval = 15;    
-        buffer_amount = (int)((sample_rate / 1000.0) * update_interval * 2.0);
+        buffer_sample_rate = sample_rate;
+        update_interval = 15;
+        buffer_amount = (int)((buffer_sample_rate / 1000.0) * update_interval * 2.0);
         buffer_lastpos = 0;
         pokey_settings_sizeof = sizeof(pokey_settings);
     
@@ -124,7 +153,7 @@ void dll_init(HWND hwnd,int sample_rate) {
         vibe_check(Device -> CreateSoundBuffer(
             describe_buffer(
                 DSBCAPS_GLOBALFOCUS | DSBCAPS_GETCURRENTPOSITION2,
-                describe_format(sample_rate),
+                describe_format(buffer_sample_rate),
                 buffer_length
             ),
             &SecondaryBuffer,
@@ -255,8 +284,11 @@ void copy_settings(volatile pokey_settings* struct1,volatile pokey_settings* str
 //Game Maker interface
 
 
-GMREAL __pokey_dll_init(double hwnd_real,double sample_rate_real) {
-    dll_init((HWND)((int)hwnd_real),(int)sample_rate_real);
+GMREAL __pokey_dll_init(double hwnd_real, double sample_rate_real) {
+    dll_init(
+        (HWND)((int)hwnd_real),
+        (int)sample_rate_real
+    );
     
     return 0;
 }
@@ -267,7 +299,7 @@ GMREAL __pokey_dll_update() {
     return 0;
 }
 
-GMREAL __pokey_sound(double channel,double type,double freq,double vol,double pan) {
+GMREAL __pokey_sound(double channel, double type, double freq, double vol, double pan) {
     pokey_set_channel(
         (int)channel,
         (unsigned char)type,

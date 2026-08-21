@@ -3,7 +3,7 @@
 	"folder": "gm82",
 	"version": "0.1",
 	"author": "renex",
-	"date": "20/08/2026",
+	"date": "21/08/2026",
 	"license": "Free to use, also for commercial games.",
 	"description": "pokey sound chip emulator",
 	"helpfile": "",
@@ -70,7 +70,7 @@
 				},
 				{
 					"name": "pokey_sound",
-					"extname": "",
+					"extname": "__pokey_sound",
 					"calltype": 12,
 					"helpline": "pokey_sound(channel,type,freq,vol,pan)",
 					"hidden": false,
