@@ -29,8 +29,6 @@
 
 - wrap all dll functions in gml helpers that also check ranges and etc.
 - abstract channel count into an init setting
-- have a separate entrypoint that initializes memory so you can use setup
-  functions before directsound is initialized with the hwnd
 - double buffer width, implement stereo sound, implement panning
 
 */
@@ -113,13 +111,37 @@ void copy_settings(volatile pokey_settings*,volatile pokey_settings*);
 void pokey_init();
 void pokey_set_channel(int, unsigned char, unsigned char, float, float);
 void pokey_push_settings();
-void pokey_update();
+void pokey_timer_callback();
 void pokey_generate(int);
 
 
 //---------------------------------------------------------------------------//
 //DirectSound and Windows boilerplate
 
+
+DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
+    memset(&BufferDescriptor,0,sizeof(BufferDescriptor));
+    BufferDescriptor.dwFlags = flags;
+    BufferDescriptor.dwBufferBytes = size;
+    BufferDescriptor.lpwfxFormat = format;
+    BufferDescriptor.dwReserved = 0;
+    BufferDescriptor.dwSize = sizeof(DSBUFFERDESC);
+    return &BufferDescriptor;
+}
+
+WAVEFORMATEX* describe_format(int sample_rate) {
+    memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
+    FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
+    FormatDescriptor.nChannels = 1;
+    FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
+    FormatDescriptor.wBitsPerSample = 8;
+    FormatDescriptor.nBlockAlign =
+        (FormatDescriptor.wBitsPerSample / 8) * FormatDescriptor.nChannels;
+    FormatDescriptor.nAvgBytesPerSec =
+        FormatDescriptor.nSamplesPerSec * FormatDescriptor.nBlockAlign;
+    FormatDescriptor.cbSize = 0;
+    return &FormatDescriptor;
+}
 
 void dll_init(HWND hwnd,int sample_rate) {
     //initialize some globals
@@ -161,42 +183,14 @@ void dll_init(HWND hwnd,int sample_rate) {
         ));
     
     
-    //start engine
-        pokey_init();
-    
-    
     //set up callback for refilling the secondary buffer
         timeSetEvent(update_interval,update_interval,timer_callback,0,TIME_PERIODIC);
     
     
-    //start buffer
+    //get it going
         TertiaryBuffer = (unsigned char*)malloc(buffer_length);
-        pokey_update();
+        pokey_timer_callback();
         vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
-}
-
-DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
-    memset(&BufferDescriptor,0,sizeof(BufferDescriptor));
-    BufferDescriptor.dwFlags = flags;
-    BufferDescriptor.dwBufferBytes = size;
-    BufferDescriptor.lpwfxFormat = format;
-    BufferDescriptor.dwReserved = 0;
-    BufferDescriptor.dwSize = sizeof(DSBUFFERDESC);
-    return &BufferDescriptor;
-}
-
-WAVEFORMATEX* describe_format(int sample_rate) {
-    memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
-    FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
-    FormatDescriptor.nChannels = 1;
-    FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
-    FormatDescriptor.wBitsPerSample = 8;
-    FormatDescriptor.nBlockAlign =
-        (FormatDescriptor.wBitsPerSample / 8) * FormatDescriptor.nChannels;
-    FormatDescriptor.nAvgBytesPerSec =
-        FormatDescriptor.nSamplesPerSec * FormatDescriptor.nBlockAlign;
-    FormatDescriptor.cbSize = 0;
-    return &FormatDescriptor;
 }
 
 int secondary_buffer_query() {
@@ -267,7 +261,7 @@ void secondary_buffer_fill(int amount) {
 }
 
 void CALLBACK timer_callback(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD dw2) {
-    pokey_update();
+    pokey_timer_callback();
 }
 
 void copy_settings(volatile pokey_settings* struct1,volatile pokey_settings* struct2) {
@@ -283,6 +277,11 @@ void copy_settings(volatile pokey_settings* struct1,volatile pokey_settings* str
 //---------------------------------------------------------------------------//
 //Game Maker interface
 
+GMREAL __pokey_preinit() {
+    pokey_init();
+    
+    return 0;
+}
 
 GMREAL __pokey_dll_init(double hwnd_real, double sample_rate_real) {
     dll_init(
@@ -313,7 +312,7 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
 
 
 //---------------------------------------------------------------------------//
-//POKEY Engine
+//POKEY api
 
 
 double pokey_clock_accumulator[4];
@@ -356,7 +355,7 @@ void pokey_push_settings() {
             copy_settings(&pokey_settings_b,&pokey_settings_a);
 }
 
-void pokey_update() {
+void pokey_timer_callback() {
     //fill buffer as necessary
         int amount = secondary_buffer_query();
         if (amount) {
@@ -477,5 +476,6 @@ void pokey_generate(int amount) {
         TertiaryBuffer[sample] = (int)(128.0 + 127.0 * mix / 4.0);
     }    
 }
+
 
 //---------------------------------------------------------------------------//

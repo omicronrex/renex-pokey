@@ -44,9 +44,24 @@
 			"filename": "renex-pokey.dll",
 			"origname": "build\\Release\\renex-pokey.dll",
 			"kind": 1,
-			"init": "",
+			"init": "__pokey_preinit",
 			"final": "",
 			"functions": [
+				{
+					"name": "pokey_sound",
+					"extname": "__pokey_sound",
+					"calltype": 12,
+					"helpline": "pokey_sound(channel,type,freq,vol,pan)",
+					"hidden": false,
+					"argtypes": [
+						2,
+						2,
+						2,
+						2,
+						2
+					],
+					"returntype": 2
+				},
 				{
 					"name": "__pokey_dll_init",
 					"extname": "",
@@ -69,18 +84,12 @@
 					"returntype": 2
 				},
 				{
-					"name": "pokey_sound",
-					"extname": "__pokey_sound",
+					"name": "__pokey_preinit",
+					"extname": "",
 					"calltype": 12,
-					"helpline": "pokey_sound(channel,type,freq,vol,pan)",
-					"hidden": false,
-					"argtypes": [
-						2,
-						2,
-						2,
-						2,
-						2
-					],
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [],
 					"returntype": 2
 				}
 			],
