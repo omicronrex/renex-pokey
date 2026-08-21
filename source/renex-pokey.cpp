@@ -316,20 +316,31 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
 //POKEY Engine
 
 
-int pok_state;
+double pokey_clock_accumulator[4];
+int pokey_clock_counter[4];
+int pokey_channel_signal[4];
+int pokey_lfsr_reg4[4];
+int pokey_lfsr_reg5[4];
+int pokey_lfsr_reg9[4];
+
 
 void pokey_init() {
-    //initialize engine variables
-        pok_state = 0;
+    for (int i=0;i<4;++i) {
+        pokey_settings_a.chan_type[i]=0;
+        pokey_settings_a.chan_freq[i]=0;
+        pokey_settings_a.chan_vol[i]=0;
+        pokey_settings_a.chan_pan[i]=0;
         
-        for (int i=0;i<4;++i) {
-            pokey_settings_a.chan_type[i]=0;
-            pokey_settings_a.chan_freq[i]=0;
-            pokey_settings_a.chan_vol[i]=0;
-            pokey_settings_a.chan_pan[i]=0;
-        }
-        pokey_settings_a.ready=true;
-        copy_settings(&pokey_settings_b,&pokey_settings_a);        
+        pokey_lfsr_reg4[i]=15;
+        pokey_lfsr_reg5[i]=31;
+        pokey_lfsr_reg9[i]=511;
+        
+        pokey_clock_accumulator[i]=0;
+        pokey_clock_counter[i]=0;
+        pokey_channel_signal[i]=0;
+    }
+    pokey_settings_a.ready=true;
+    copy_settings(&pokey_settings_b,&pokey_settings_a);        
 }
 
 void pokey_set_channel(int channel, unsigned char type, unsigned char freq, float vol, float pan) {
@@ -358,18 +369,113 @@ void pokey_update() {
         }
 }
 
-void pokey_generate(int amount) {
-    //pokey_settings_c etc.
-    //test tone
-        int i = 0;
-        while (i < amount) {
-            pok_state = (pok_state + 1) % 1024;
-            if (pok_state<512)
-                TertiaryBuffer[i] = 128 + ((pok_state % 32 < 18) ? 5 : -5);
-            else
-                TertiaryBuffer[i] = 128 + ((pok_state % 64 < 36) ? 5 : -5);
-        i += 1;}
+
+//-------------------------------------------------------------------------//
+//clock helpers
+
+
+double getnotefreq(int note) {
+    if (note == 0) return 0;
+    
+    double freq = 55.0;
+    
+    for (int i = 0; i < note; i += 12) {
+        freq *= 2.0;
+    }
+    for (int i = 0; i < note % 12; ++i) {
+        freq *= 1.05946309436;
+    }
+    
+    return 55.0 * freq;
 }
 
+int poly4(unsigned char channel) {
+    int r = pokey_lfsr_reg4[channel]>>1;
+    r = (r&~8)|((r&1)^((r&2)>>1))<<3;
+    pokey_lfsr_reg4[channel] = r;
+
+    return r&1;
+}
+
+int poly5(unsigned char channel) {
+    int r = pokey_lfsr_reg5[channel]>>1;
+    r = (r&~16)|((r&1)^((r&2)>>1))<<4;
+    pokey_lfsr_reg5[channel] = r;
+
+    return r&1;
+}
+
+int poly9(unsigned char channel) {
+    int r = pokey_lfsr_reg9[channel]>>1;
+    r = (r&~256)|((r&1)^((r&8)>>3))<<8;
+    pokey_lfsr_reg9[channel] = r;
+
+    return r&1;
+}
+
+int clock(unsigned char channel,int factor) {
+    return (pokey_clock_counter[channel] % factor < 1)?1:0;
+}
+
+int square(unsigned char channel,int length,float duty) {
+    return (pokey_clock_counter[channel]%length < length*duty)?1:0;
+}
+
+
+//-------------------------------------------------------------------------//
+//main synth core
+
+
+void pokey_generate(int amount) {
+    int sample,channel;
+    double frequency[4], clkstep[4], period;
+    float mix;
+    
+    for (channel = 0; channel < 4; ++channel) {
+        frequency[channel] = getnotefreq(pokey_settings_c.chan_freq[channel]);
+        period = buffer_sample_rate / frequency[channel];
+        clkstep[channel] = period / 1.79;
+    }
+    
+    for (sample = 0; sample < amount; ++sample) {
+        mix = 0;
+        for (channel = 0; channel < 4; ++channel) {
+            pokey_clock_accumulator[channel]++;
+            if (pokey_clock_accumulator[channel] > clkstep[channel]) {
+                pokey_clock_counter[channel] = (++pokey_clock_counter[channel]) % 1116;
+                pokey_clock_accumulator[channel] -= clkstep[channel];
+                
+                if (frequency[channel] > 0) switch (pokey_settings_c.chan_type[channel]) {
+                    case 0x1: pokey_channel_signal[channel]=poly4(channel); break;
+                    case 0x2: if (clock(channel,18)) pokey_channel_signal[channel]=poly4(channel); break;
+                    case 0x3: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
+                    
+                    case 0x4: 
+                    case 0x5: pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
+                    
+                    case 0x6: 
+                    case 0xa: pokey_channel_signal[channel]=square(channel,31,18/31); break;
+                    
+                    case 0x7:
+                    case 0x9: pokey_channel_signal[channel]=poly5(channel); break;
+                    
+                    case 0x8: pokey_channel_signal[channel]=poly9(channel); break;
+                    
+                    case 0xc:
+                    case 0xd: if (clock(channel,3)) pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
+                    
+                    case 0xe: pokey_channel_signal[channel]=square(channel,93,18/31); break;
+                    
+                    case 0xf: if (clock(channel,3)) pokey_channel_signal[channel]=poly5(channel); break;
+                    
+                    default: pokey_channel_signal[channel]=0; break;
+                }
+            }
+            
+            mix += pokey_channel_signal[channel] * pokey_settings_c.chan_vol[channel];
+        }
+        TertiaryBuffer[sample] = (int)(128.0 + 127.0 * mix / 4.0);
+    }    
+}
 
 //---------------------------------------------------------------------------//
