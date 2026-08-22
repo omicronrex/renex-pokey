@@ -264,9 +264,9 @@ void CALLBACK timer_callback(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, D
     pokey_timer_callback();
 }
 
-void copy_settings(volatile pokey_settings* struct1,volatile pokey_settings* struct2) {
-    char* A = (char*)struct1;
-    char* B = (char*)struct2;
+void copy_settings(volatile pokey_settings* from,volatile pokey_settings* to) {
+    char* A = (char*)from;
+    char* B = (char*)to;
     
     for (int i=0;i<pokey_settings_sizeof;++i) {
         B[i]=A[i];
@@ -343,7 +343,7 @@ void pokey_init() {
         pokey_channel_signal[i]=0;
     }
     pokey_settings_a.ready=true;
-    copy_settings(&pokey_settings_b,&pokey_settings_a);        
+    copy_settings(&pokey_settings_a,&pokey_settings_b);        
 }
 
 void pokey_set_channel(int channel, unsigned char type, unsigned char freq, float vol, float pan) {
@@ -356,7 +356,7 @@ void pokey_set_channel(int channel, unsigned char type, unsigned char freq, floa
 void pokey_push_settings() {
     //update mailbox if allowed
         if (pokey_settings_b.ready == false)
-            copy_settings(&pokey_settings_b,&pokey_settings_a);
+            copy_settings(&pokey_settings_a,&pokey_settings_b);
 }
 
 void pokey_timer_callback() {
@@ -364,7 +364,7 @@ void pokey_timer_callback() {
         int amount = secondary_buffer_query();
         if (amount) {
             if (pokey_settings_b.ready) {
-                copy_settings(&pokey_settings_c,&pokey_settings_b);
+                copy_settings(&pokey_settings_b,&pokey_settings_c);
                 pokey_settings_b.ready=false;
             }
             pokey_generate(amount);
@@ -477,6 +477,7 @@ void pokey_generate(int amount) {
             
             mix += pokey_channel_signal[channel] * pokey_settings_c.chan_vol[channel];
         }
+        
         TertiaryBuffer[sample] = (int)(128.0 + 127.0 * mix / 4.0);
     }    
 }
