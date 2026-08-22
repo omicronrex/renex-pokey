@@ -1,3 +1,3 @@
 # renex pokey
 
-a POKEY sound chip emulator for Game Maker 8.2
+A POKEY-style sound engine for Game Maker 8.2

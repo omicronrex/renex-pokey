@@ -30,6 +30,8 @@
 - wrap all dll functions in gml helpers that also check ranges and etc.
 - abstract channel count into an init setting
 - double buffer width, implement stereo sound, implement panning
+- the square wave implementation is incorrect; need to update more often to be
+  able to update the duty cycle with more granularity
 
 */
 //---------------------------------------------------------------------------//
@@ -382,7 +384,7 @@ double getnotefreq(int note) {
     
     double freq = 55.0;
     
-    for (int i = 0; i < note; i += 12) {
+    for (int i = 0; i <= note-12; i += 12) {
         freq *= 2.0;
     }
     for (int i = 0; i < note % 12; ++i) {
@@ -417,11 +419,15 @@ int poly9(unsigned char channel) {
 }
 
 int clock(unsigned char channel,int factor) {
-    return (pokey_clock_counter[channel] % factor < 1)?1:0;
+    if (pokey_clock_counter[channel] % factor < 1)
+        return 1;
+    return 0;
 }
 
 int square(unsigned char channel,int length,float duty) {
-    return (pokey_clock_counter[channel]%length < length*duty)?1:0;
+    if ((pokey_clock_counter[channel]*2)%length < length*duty)
+        return 1;
+    return 0;
 }
 
 
@@ -443,33 +449,23 @@ void pokey_generate(int amount) {
     for (sample = 0; sample < amount; ++sample) {
         mix = 0;
         for (channel = 0; channel < 4; ++channel) {
-            pokey_clock_accumulator[channel]++;
-            if (pokey_clock_accumulator[channel] > clkstep[channel]) {
-                pokey_clock_counter[channel] = (++pokey_clock_counter[channel]) % POKEY_CLOCK_MODULO;
+            ++pokey_clock_accumulator[channel];
+            if (pokey_clock_accumulator[channel] >= clkstep[channel]) {
+                pokey_clock_counter[channel] = (pokey_clock_counter[channel]+1) % POKEY_CLOCK_MODULO;
                 pokey_clock_accumulator[channel] -= clkstep[channel];
                 
                 if (frequency[channel] > 0) switch (pokey_settings_c.chan_type[channel]) {
-                    case 0x1: pokey_channel_signal[channel]=poly4(channel); break;
-                    case 0x2: if (clock(channel,18)) pokey_channel_signal[channel]=poly4(channel); break;
-                    case 0x3: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
+                    case 0x1: pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
                     
-                    case 0x4: 
-                    case 0x5: pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
+                    case 0x2: pokey_channel_signal[channel]=poly4(channel); break;
+                    case 0x3: pokey_channel_signal[channel]=poly5(channel); break;
+                    case 0x4: pokey_channel_signal[channel]=poly9(channel); break;
                     
-                    case 0x6: 
-                    case 0xa: pokey_channel_signal[channel]=square(channel,31,18/31); break;
+                    case 0x5: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
                     
-                    case 0x7:
-                    case 0x9: pokey_channel_signal[channel]=poly5(channel); break;
+                    case 0x6: pokey_channel_signal[channel]=square(channel,31,8/31.f); break; 
                     
-                    case 0x8: pokey_channel_signal[channel]=poly9(channel); break;
-                    
-                    case 0xc:
-                    case 0xd: if (clock(channel,3)) pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
-                    
-                    case 0xe: pokey_channel_signal[channel]=square(channel,93,18/31); break;
-                    
-                    case 0xf: if (clock(channel,3)) pokey_channel_signal[channel]=poly5(channel); break;
+                    case 0x7: pokey_channel_signal[channel]=square(channel,31,18/31.f); break;
                     
                     default: pokey_channel_signal[channel]=0; break;
                 }
