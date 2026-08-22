@@ -314,6 +314,10 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
 //---------------------------------------------------------------------------//
 //POKEY api
 
+#define POKEY_CLOCK_FACTOR 1.79
+#define POKEY_CLOCK_MODULO 1116
+#define SQRT12TH2 1.05946309436
+
 
 double pokey_clock_accumulator[4];
 int pokey_clock_counter[4];
@@ -382,10 +386,10 @@ double getnotefreq(int note) {
         freq *= 2.0;
     }
     for (int i = 0; i < note % 12; ++i) {
-        freq *= 1.05946309436;
+        freq *= SQRT12TH2;
     }
     
-    return 55.0 * freq;
+    return freq;
 }
 
 int poly4(unsigned char channel) {
@@ -433,7 +437,7 @@ void pokey_generate(int amount) {
     for (channel = 0; channel < 4; ++channel) {
         frequency[channel] = getnotefreq(pokey_settings_c.chan_freq[channel]);
         period = buffer_sample_rate / frequency[channel];
-        clkstep[channel] = period / 1.79;
+        clkstep[channel] = period / POKEY_CLOCK_FACTOR;
     }
     
     for (sample = 0; sample < amount; ++sample) {
@@ -441,7 +445,7 @@ void pokey_generate(int amount) {
         for (channel = 0; channel < 4; ++channel) {
             pokey_clock_accumulator[channel]++;
             if (pokey_clock_accumulator[channel] > clkstep[channel]) {
-                pokey_clock_counter[channel] = (++pokey_clock_counter[channel]) % 1116;
+                pokey_clock_counter[channel] = (++pokey_clock_counter[channel]) % POKEY_CLOCK_MODULO;
                 pokey_clock_accumulator[channel] -= clkstep[channel];
                 
                 if (frequency[channel] > 0) switch (pokey_settings_c.chan_type[channel]) {
