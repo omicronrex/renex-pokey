@@ -16,6 +16,11 @@
     ///pokey_init(samplerate,channels)
     //samplerate: audio sample rate (8000 - 48000)
     //channels: number of channels (1 - 32)
+    //Pass 0 for the sample rate to use the system sample rate for the
+    //highest quality audio.
+    //Please note that very low sample rates, while they may sound like a
+    //low-pass filter, will also limit the top frequency of sounds played,
+    //and cause high frequencies close to the limit to ring.
     
     if (__pokey_init) {
         show_error("Error in function pokey_init: pokey already initialized",false)
@@ -23,13 +28,14 @@
     }
     
     __pokey_channels=median(1,argument1,32)
-    __pokey_samplerate=median(8000,argument0,48000)
     
     __pokey_dll_init(
         window_handle(),
-        __pokey_samplerate,
+        argument0,
         __pokey_channels
     )
+    
+    __pokey_samplerate=__pokey_get_samplerate()
     
     __pokey_init=true
 
@@ -66,7 +72,7 @@
     ///pokey_stop()
     //Silences all channels.
     
-    var __i;__i=0 repeat (__pokey_channels) {__pokey_sound(0,0,0,0,0) __i+=1}
+    var __i;__i=0 repeat (__pokey_channels) {__pokey_sound(__i,0,0,0,0) __i+=1}
     
     
 #define pokey_get_chromatic_frequency

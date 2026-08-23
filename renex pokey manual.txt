@@ -38,6 +38,11 @@
   
   pokey_init(samplerate,channels)
     Starts the sound engine with the desired settings.
+    - 'samplerate' is limited between 8000 and 48000.
+    - 'channels' is limited between 1 and 32.
+    - pass 'noone' for 'samplerate' to use the system sample rate, which
+      gives the highest quality audio.
+  
   pokey_get_chromatic_frequency(note)
   pokey_get_byte_frequency(byte)
   pokey_sound(channel,type,freq,vol,pan)
