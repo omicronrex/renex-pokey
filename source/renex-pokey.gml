@@ -43,19 +43,20 @@
 #define pokey_sound
     ///pokey_sound(channel,type,freq,vol,pan)
     //channel: channel to use (0 - 32)
-    //type: instrument (0 - 7)
+    //type: instrument id (0 - 6)
     //freq: sound frequency in hz
     //volume: channel volume (0 - 1)
     //pan: channel pan (-1 - 1)
-    //Set the volume to 0 to disable a channel.
+    //Starts playing sound in a channel.
+    //To stop a channel, set the volume to 0.
     //Instruments:
-    //0: Square 50% duty
-    //1: Square 18/31 duty (aka 18-13)
-    //2: Square 12.5% duty
-    //3: poly 4
-    //4: poly 5
-    //5: poly 9
-    //6: poly 4 -> poly 5
+    //0: Pulse 1/2 duty
+    //1: Pulse 18/31 duty
+    //2: Pulse 1/8 duty
+    //3: Poly 4
+    //4: Poly 5
+    //5: Poly 9
+    //6: Poly 4 -> Poly 5
     
     if (__pokey_init) {
         __pokey_sound(

@@ -437,12 +437,12 @@ void pokey_generate(int amount) {
     //only render active channels
     int chan_count = 0;
     for (channel = 0; channel < pokey_active_channels; ++channel) {
-        type[chan_count] = pokey_settings_c.chan_type[channel];
         frequency[chan_count] = pokey_settings_c.chan_freq[channel];
-        period[chan_count] = buffer_sample_rate / frequency[channel];
-        pan_left[chan_count] = min(1.0,1.0-pokey_settings_c.chan_pan[channel]) * pokey_settings_c.chan_vol[channel];
-        pan_right[chan_count] = min(1.0,pokey_settings_c.chan_pan[channel]+1.0) * pokey_settings_c.chan_vol[channel];
         if (frequency[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
+            type[chan_count] = pokey_settings_c.chan_type[channel];
+            period[chan_count] = buffer_sample_rate / frequency[channel];
+            pan_left[chan_count] = min(1.0,1.0-pokey_settings_c.chan_pan[channel]) * pokey_settings_c.chan_vol[channel];
+            pan_right[chan_count] = min(1.0,pokey_settings_c.chan_pan[channel]+1.0) * pokey_settings_c.chan_vol[channel];
             chanid[chan_count]=channel;
             chan_count++;
         }
