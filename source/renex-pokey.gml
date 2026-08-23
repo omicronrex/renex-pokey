@@ -50,8 +50,8 @@
     //Set the volume to 0 to disable a channel.
     //Instruments:
     //0: Square 50% duty
-    //1: Square 18/13 duty
-    //2: Square 8/25 duty
+    //1: Square 18/31 duty (aka 18-13)
+    //2: Square 12.5% duty
     //3: poly 4
     //4: poly 5
     //5: poly 9
@@ -62,7 +62,7 @@
             median(0,argument0,__pokey_channels),
             median(0,argument1,6),
             median(0,argument2,__pokey_samplerate),
-            median(0,argument3,1),
+            sqr(median(0,argument3,1)),
             median(-1,argument4,1),
         )
     }

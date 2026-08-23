@@ -12,11 +12,17 @@
 
 */
 //---------------------------------------------------------------------------//
+/*todo
 
+- double buffer width, implement stereo sound, implement panning
+
+*/
+//---------------------------------------------------------------------------//
 
 #include <windows.h>
 #include <dsound.h>
 #include <stdio.h>
+#include <math.h>
 
 #pragma comment(lib,"dsound.lib")
 #pragma comment(lib,"Winmm.lib")
@@ -26,22 +32,13 @@
 
 
 //---------------------------------------------------------------------------//
-/*todo
-
-- double buffer width, implement stereo sound, implement panning
-- the square wave implementation is incorrect; need to update more often to be
-  able to update the duty cycle with more granularity
-- add an option to pass NULL for samplerate; grab system samplerate
-
-*/
-//---------------------------------------------------------------------------//
 //debug helpers 🖐
 
 
 #define WIDE2(x) L##x
 #define WIDE1(x) WIDE2(x)
 
-bool __vibe_check(const wchar_t* file, int line, HRESULT hr);
+bool __vibe_check(const wchar_t*, int, HRESULT);
 #define vibe_check(a) __vibe_check(WIDE1(__FILE__),__LINE__,a)
 extern bool __vibe_check(const wchar_t* file, int line, HRESULT hr) {
     if (SUCCEEDED(hr)) return false;
@@ -90,12 +87,17 @@ int buffer_lastpos;
 int buffer_sample_rate;
 
 double pokey_clock_accumulator[NUM_CHANNELS];
-int pokey_clock_counter[NUM_CHANNELS];
 int pokey_channel_signal[NUM_CHANNELS];
 int pokey_lfsr_reg4[NUM_CHANNELS];
 int pokey_lfsr_reg5[NUM_CHANNELS];
 int pokey_lfsr_reg9[NUM_CHANNELS];
 int pokey_active_channels;
+
+float pokey_duty_cycle[3] = {
+    0.5f,
+    18.f/31.f,
+    0.125f
+};
 
 //mailbox system for thread data transfer
     int pokey_settings_sizeof;
@@ -343,9 +345,8 @@ GMREAL __pokey_get_samplerate() {
 //POKEY api
 
 
-#define POKEY_CLOCK_FACTOR 1.789790
-#define POKEY_CLOCK_MODULO 1116
-
+//adjustment factor for the lfsr poly instruments
+#define POKEY_CLOCK_FACTOR 1.789790/2.0
 
 void pokey_init() {
     for (int i=0;i<NUM_CHANNELS;++i) {
@@ -359,7 +360,6 @@ void pokey_init() {
         pokey_lfsr_reg9[i]=511;
         
         pokey_clock_accumulator[i]=0;
-        pokey_clock_counter[i]=0;
         pokey_channel_signal[i]=0;
     }
     pokey_settings_a.ready=true;
@@ -393,8 +393,8 @@ void pokey_timer_callback() {
 }
 
 
-//-------------------------------------------------------------------------//
-//clock helpers
+//---------------------------------------------------------------------------//
+//linear feedback shift registers
 
 
 int poly4(unsigned char channel) {
@@ -421,27 +421,15 @@ int poly9(unsigned char channel) {
     return r&1;
 }
 
-int clock(unsigned char channel,int factor) {
-    if (pokey_clock_counter[channel] % factor < 1)
-        return 1;
-    return 0;
-}
 
-int square(unsigned char channel,int length,float duty) {
-    if ((pokey_clock_counter[channel]*2)%length < length*duty)
-        return 1;
-    return 0;
-}
-
-
-//-------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 //main synth core
 
 
 void pokey_generate(int amount) {
     int sample,channel,chanid[NUM_CHANNELS];
     unsigned char type[NUM_CHANNELS];
-    double frequency[NUM_CHANNELS], clkstep[NUM_CHANNELS], period;
+    double frequency[NUM_CHANNELS], clkstep[NUM_CHANNELS], period[NUM_CHANNELS];
     double mix;
     
     
@@ -450,8 +438,7 @@ void pokey_generate(int amount) {
     for (channel = 0; channel < pokey_active_channels; ++channel) {
         type[chan_count] = pokey_settings_c.chan_type[channel];
         frequency[chan_count] = pokey_settings_c.chan_freq[channel];
-        period = buffer_sample_rate / frequency[channel];
-        clkstep[chan_count] = period / POKEY_CLOCK_FACTOR;
+        period[chan_count] = buffer_sample_rate / frequency[channel];
         if (frequency[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
             chanid[chan_count]=channel;
             chan_count++;
@@ -467,25 +454,30 @@ void pokey_generate(int amount) {
         for (i = 0; i < chan_count; ++i) {
             channel=chanid[i];
             
-            ++pokey_clock_accumulator[channel];
-            if (pokey_clock_accumulator[channel] >= clkstep[channel]) {
-                pokey_clock_counter[channel] = (pokey_clock_counter[channel]+1) % POKEY_CLOCK_MODULO;
-                pokey_clock_accumulator[channel] -= clkstep[channel];
-                
-                if (frequency[channel] > 0) switch (type[channel]) {
-                    case 0x0: pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
-                    case 0x2: pokey_channel_signal[channel]=square(channel,31,18/31.f); break;
-                    case 0x1: pokey_channel_signal[channel]=square(channel,31,8/31.f); break; 
-                    
-                    case 0x3: pokey_channel_signal[channel]=poly4(channel); break;
-                    case 0x4: pokey_channel_signal[channel]=poly5(channel); break;
-                    case 0x5: pokey_channel_signal[channel]=poly9(channel); break;
-                    
-                    case 0x6: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
-                    
-                    default: pokey_channel_signal[channel]=0; break;
+            if (type[channel] < 0x3) {
+                if (frequency[channel] > 0) {
+                    pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel] + 1, period[channel]);
+                    if (pokey_clock_accumulator[channel] / period[channel] < pokey_duty_cycle[type[channel]])
+                        pokey_channel_signal[channel] = 1;
+                    else 
+                        pokey_channel_signal[channel] = 0;
                 } else {
-                    pokey_channel_signal[channel]=0;
+                    pokey_channel_signal[channel] = 0;
+                }
+            } else {            
+                ++pokey_clock_accumulator[channel];
+                if (pokey_clock_accumulator[channel] >= period[channel] / POKEY_CLOCK_FACTOR) {
+                    pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel],period[channel] / POKEY_CLOCK_FACTOR);
+                    
+                    if (frequency[channel] > 0) switch (type[channel]) {
+                        case 0x3: pokey_channel_signal[channel] = poly4(channel); break;
+                        case 0x4: pokey_channel_signal[channel] = poly5(channel); break;
+                        case 0x5: pokey_channel_signal[channel] = poly9(channel); break;
+                        
+                        case 0x6: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
+                    } else {
+                        pokey_channel_signal[channel] = 0;
+                    }
                 }
             }
             
