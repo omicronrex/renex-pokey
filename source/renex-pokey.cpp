@@ -14,7 +14,7 @@
 //---------------------------------------------------------------------------//
 /*todo
 
-- double buffer width, implement stereo sound, implement panning
+- fix apparent frequency of the poly instruments
 
 */
 //---------------------------------------------------------------------------//
@@ -144,7 +144,7 @@ DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
 WAVEFORMATEX* describe_format(int sample_rate) {
     memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
     FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
-    FormatDescriptor.nChannels = 1;
+    FormatDescriptor.nChannels = 2;
     FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
     FormatDescriptor.wBitsPerSample = 8;
     FormatDescriptor.nBlockAlign =
@@ -246,7 +246,8 @@ int secondary_buffer_query() {
             writewrap = buffer_lastpos;
         }        
         
-        DWORD write_size = (play_head + buffer_amount) - writewrap;
+        //* 2 channels
+        DWORD write_size = (play_head + buffer_amount * 2) - writewrap;
     
     
     //if we're running too fast, nop out
@@ -430,7 +431,7 @@ void pokey_generate(int amount) {
     int sample,channel,chanid[NUM_CHANNELS];
     unsigned char type[NUM_CHANNELS];
     double frequency[NUM_CHANNELS], clkstep[NUM_CHANNELS], period[NUM_CHANNELS];
-    double mix;
+    double mix_left,mix_right,pan_left[NUM_CHANNELS],pan_right[NUM_CHANNELS];
     
     
     //only render active channels
@@ -439,6 +440,8 @@ void pokey_generate(int amount) {
         type[chan_count] = pokey_settings_c.chan_type[channel];
         frequency[chan_count] = pokey_settings_c.chan_freq[channel];
         period[chan_count] = buffer_sample_rate / frequency[channel];
+        pan_left[chan_count] = min(1.0,1.0-pokey_settings_c.chan_pan[channel]) * pokey_settings_c.chan_vol[channel];
+        pan_right[chan_count] = min(1.0,pokey_settings_c.chan_pan[channel]+1.0) * pokey_settings_c.chan_vol[channel];
         if (frequency[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
             chanid[chan_count]=channel;
             chan_count++;
@@ -447,9 +450,10 @@ void pokey_generate(int amount) {
     
     
     //mixer
-    int i;    
-    for (sample = 0; sample < amount; ++sample) {
-        mix = 0;
+    int i;
+    for (sample = 0; sample < amount; sample += 2) {
+        mix_left = 0;
+        mix_right = 0;
         
         for (i = 0; i < chan_count; ++i) {
             channel=chanid[i];
@@ -481,12 +485,17 @@ void pokey_generate(int amount) {
                 }
             }
             
-            mix += pokey_channel_signal[channel] * pokey_settings_c.chan_vol[channel];
+            mix_left += pokey_channel_signal[channel] * pan_left[channel];
+            mix_right += pokey_channel_signal[channel] * pan_right[channel];
         }
         
-        if (chan_count > 0) mix /= chan_count;
+        if (chan_count > 0) {
+            mix_left /= chan_count;
+            mix_right /= chan_count;
+        }
         
-        TertiaryBuffer[sample] = (int)(128.0 + 127.0 * mix);
+        TertiaryBuffer[sample+0] = (int)(128.0 + 127.0 * mix_left);
+        TertiaryBuffer[sample+1] = (int)(128.0 + 127.0 * mix_right);
     }    
 }
 
