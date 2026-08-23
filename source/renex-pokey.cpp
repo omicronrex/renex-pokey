@@ -3,11 +3,12 @@
 
     RENEX POKEY
     ===========
+    v1.0
     18 Aug 2026
     
-    A modern, high quality reimplementation of a POKEY-style sound engine.
+  A modern, high quality reimplementation of a POKEY-style sound engine.
     
-    Designed for use with Game Maker 8.2.
+  Designed for use with Game Maker 8.2.
 
 */
 //---------------------------------------------------------------------------//
@@ -27,11 +28,10 @@
 //---------------------------------------------------------------------------//
 /*todo
 
-- wrap all dll functions in gml helpers that also check ranges and etc.
-- abstract channel count into an init setting
 - double buffer width, implement stereo sound, implement panning
 - the square wave implementation is incorrect; need to update more often to be
   able to update the duty cycle with more granularity
+- add an option to pass NULL for samplerate; grab system samplerate
 
 */
 //---------------------------------------------------------------------------//
@@ -61,11 +61,13 @@ extern bool __vibe_check(const wchar_t* file, int line, HRESULT hr) {
 //types
 
 
+#define NUM_CHANNELS 32
+
 struct pokey_settings {
-    unsigned char chan_type[4];
-    unsigned char chan_freq[4];
-    float chan_vol[4];
-    float chan_pan[4];
+    unsigned char chan_type[NUM_CHANNELS];
+    double chan_freq[NUM_CHANNELS];
+    float chan_vol[NUM_CHANNELS];
+    float chan_pan[NUM_CHANNELS];
     char ready;
 };
 
@@ -87,6 +89,13 @@ int buffer_amount;
 int buffer_lastpos;
 int buffer_sample_rate;
 
+double pokey_clock_accumulator[NUM_CHANNELS];
+int pokey_clock_counter[NUM_CHANNELS];
+int pokey_channel_signal[NUM_CHANNELS];
+int pokey_lfsr_reg4[NUM_CHANNELS];
+int pokey_lfsr_reg5[NUM_CHANNELS];
+int pokey_lfsr_reg9[NUM_CHANNELS];
+int pokey_active_channels;
 
 //mailbox system for thread data transfer
     int pokey_settings_sizeof;
@@ -103,15 +112,14 @@ int buffer_sample_rate;
 DSBUFFERDESC* describe_buffer(DWORD, WAVEFORMATEX*, DWORD);
 WAVEFORMATEX* describe_format(int);
 
-void dll_init(HWND, int);
-
+void dll_init(HWND, int, int);
 int secondary_buffer_query();
 void secondary_buffer_fill(int);
 void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD);
 void copy_settings(volatile pokey_settings*,volatile pokey_settings*);
 
 void pokey_init();
-void pokey_set_channel(int, unsigned char, unsigned char, float, float);
+void pokey_set_channel(int, unsigned char, double, float, float);
 void pokey_push_settings();
 void pokey_timer_callback();
 void pokey_generate(int);
@@ -145,13 +153,14 @@ WAVEFORMATEX* describe_format(int sample_rate) {
     return &FormatDescriptor;
 }
 
-void dll_init(HWND hwnd,int sample_rate) {
+void dll_init(HWND hwnd, int sample_rate, int channels) {
     //initialize some globals
         buffer_sample_rate = sample_rate;
         update_interval = 15;
         buffer_amount = (int)((buffer_sample_rate / 1000.0) * update_interval * 2.0);
         buffer_lastpos = 0;
         pokey_settings_sizeof = sizeof(pokey_settings);
+        pokey_active_channels = channels;
     
     
     //initialize directsound
@@ -183,6 +192,10 @@ void dll_init(HWND hwnd,int sample_rate) {
             &SecondaryBuffer,
             NULL
         ));
+    
+    
+    //start engine
+        pokey_init();
     
     
     //set up callback for refilling the secondary buffer
@@ -279,16 +292,12 @@ void copy_settings(volatile pokey_settings* from,volatile pokey_settings* to) {
 //---------------------------------------------------------------------------//
 //Game Maker interface
 
-GMREAL __pokey_preinit() {
-    pokey_init();
-    
-    return 0;
-}
 
-GMREAL __pokey_dll_init(double hwnd_real, double sample_rate_real) {
+GMREAL __pokey_dll_init(double hwnd_real, double sample_rate_real, double channels_real) {
     dll_init(
         (HWND)((int)hwnd_real),
-        (int)sample_rate_real
+        (int)sample_rate_real,
+        (int)channels_real
     );
     
     return 0;
@@ -304,7 +313,7 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
     pokey_set_channel(
         (int)channel,
         (unsigned char)type,
-        (unsigned char)freq,
+        freq,
         (float)vol,
         (float)pan
     );
@@ -316,21 +325,13 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
 //---------------------------------------------------------------------------//
 //POKEY api
 
-#define POKEY_CLOCK_FACTOR 1.79
+
+#define POKEY_CLOCK_FACTOR 1.789790
 #define POKEY_CLOCK_MODULO 1116
-#define SQRT12TH2 1.05946309436
-
-
-double pokey_clock_accumulator[4];
-int pokey_clock_counter[4];
-int pokey_channel_signal[4];
-int pokey_lfsr_reg4[4];
-int pokey_lfsr_reg5[4];
-int pokey_lfsr_reg9[4];
 
 
 void pokey_init() {
-    for (int i=0;i<4;++i) {
+    for (int i=0;i<NUM_CHANNELS;++i) {
         pokey_settings_a.chan_type[i]=0;
         pokey_settings_a.chan_freq[i]=0;
         pokey_settings_a.chan_vol[i]=0;
@@ -348,7 +349,7 @@ void pokey_init() {
     copy_settings(&pokey_settings_a,&pokey_settings_b);        
 }
 
-void pokey_set_channel(int channel, unsigned char type, unsigned char freq, float vol, float pan) {
+void pokey_set_channel(int channel, unsigned char type, double freq, float vol, float pan) {
     pokey_settings_a.chan_type[channel] = type;
     pokey_settings_a.chan_freq[channel] = freq;
     pokey_settings_a.chan_vol[channel] = vol;
@@ -378,21 +379,6 @@ void pokey_timer_callback() {
 //-------------------------------------------------------------------------//
 //clock helpers
 
-
-double getnotefreq(int note) {
-    if (note == 0) return 0;
-    
-    double freq = 55.0;
-    
-    for (int i = 0; i <= note-12; i += 12) {
-        freq *= 2.0;
-    }
-    for (int i = 0; i < note % 12; ++i) {
-        freq *= SQRT12TH2;
-    }
-    
-    return freq;
-}
 
 int poly4(unsigned char channel) {
     int r = pokey_lfsr_reg4[channel]>>1;
@@ -437,44 +423,47 @@ int square(unsigned char channel,int length,float duty) {
 
 void pokey_generate(int amount) {
     int sample,channel;
-    double frequency[4], clkstep[4], period;
+    unsigned char type[NUM_CHANNELS];
+    double frequency[NUM_CHANNELS], clkstep[NUM_CHANNELS], period;
     float mix;
     
-    for (channel = 0; channel < 4; ++channel) {
-        frequency[channel] = getnotefreq(pokey_settings_c.chan_freq[channel]);
+    for (channel = 0; channel < pokey_active_channels; ++channel) {
+        frequency[channel] = pokey_settings_c.chan_freq[channel];
         period = buffer_sample_rate / frequency[channel];
         clkstep[channel] = period / POKEY_CLOCK_FACTOR;
+        type[channel] = pokey_settings_c.chan_type[channel];
     }
     
     for (sample = 0; sample < amount; ++sample) {
         mix = 0;
-        for (channel = 0; channel < 4; ++channel) {
+        
+        for (channel = 0; channel < pokey_active_channels; ++channel) {
             ++pokey_clock_accumulator[channel];
             if (pokey_clock_accumulator[channel] >= clkstep[channel]) {
                 pokey_clock_counter[channel] = (pokey_clock_counter[channel]+1) % POKEY_CLOCK_MODULO;
                 pokey_clock_accumulator[channel] -= clkstep[channel];
                 
-                if (frequency[channel] > 0) switch (pokey_settings_c.chan_type[channel]) {
-                    case 0x1: pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
+                if (frequency[channel] > 0) switch (type[channel]) {
+                    case 0x0: pokey_channel_signal[channel]=!pokey_channel_signal[channel]; break;
+                    case 0x2: pokey_channel_signal[channel]=square(channel,31,18/31.f); break;
+                    case 0x1: pokey_channel_signal[channel]=square(channel,31,8/31.f); break; 
                     
-                    case 0x2: pokey_channel_signal[channel]=poly4(channel); break;
-                    case 0x3: pokey_channel_signal[channel]=poly5(channel); break;
-                    case 0x4: pokey_channel_signal[channel]=poly9(channel); break;
+                    case 0x3: pokey_channel_signal[channel]=poly4(channel); break;
+                    case 0x4: pokey_channel_signal[channel]=poly5(channel); break;
+                    case 0x5: pokey_channel_signal[channel]=poly9(channel); break;
                     
-                    case 0x5: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
-                    
-                    case 0x6: pokey_channel_signal[channel]=square(channel,31,8/31.f); break; 
-                    
-                    case 0x7: pokey_channel_signal[channel]=square(channel,31,18/31.f); break;
+                    case 0x6: if (poly5(channel)) pokey_channel_signal[channel]=poly4(channel); break;
                     
                     default: pokey_channel_signal[channel]=0; break;
+                } else {
+                    pokey_channel_signal[channel]=0;
                 }
             }
             
             mix += pokey_channel_signal[channel] * pokey_settings_c.chan_vol[channel];
         }
         
-        TertiaryBuffer[sample] = (int)(128.0 + 127.0 * mix / 4.0);
+        TertiaryBuffer[sample] = (int)(128.0 + 127.0 * mix / pokey_active_channels);
     }    
 }
 
