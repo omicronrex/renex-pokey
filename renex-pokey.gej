@@ -85,15 +85,6 @@
 					"hidden": true,
 					"argtypes": null,
 					"returntype": 2
-				},
-				{
-					"name": "__pokey_step",
-					"extname": "",
-					"calltype": 2,
-					"helpline": "",
-					"hidden": true,
-					"argtypes": null,
-					"returntype": 2
 				}
 			],
 			"constants": []
@@ -124,15 +115,6 @@
 					"calltype": 12,
 					"helpline": "",
 					"hidden": true,
-					"argtypes": [],
-					"returntype": 2
-				},
-				{
-					"name": "__pokey_get_samplerate",
-					"extname": "",
-					"calltype": 12,
-					"helpline": "",
-					"hidden": false,
 					"argtypes": [],
 					"returntype": 2
 				},
