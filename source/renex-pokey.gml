@@ -37,6 +37,14 @@
     __pokey_init=true
 
 
+#define pokey_update()
+    ///pokey_update()
+    //Updates the pokey engine with the latest instrument data.
+    //Note that is is normally done automatically; you only need to call it manually if you're f.ex. in a deadlock for a loading screen or a room transition, etc.
+    
+    if (__pokey_init) __pokey_dll_update()
+
+
 #define pokey_sound
     ///pokey_sound(channel,type,freq,vol,pan)
     //channel: channel to use (0 - 31)
@@ -46,14 +54,9 @@
     //pan: channel pan (-1 - 1)
     //Starts playing sound in a channel.
     //To stop a channel, set the volume to 0.
-    //Available instrument types:
-    //pk_pulse (0): Pulse 1/2 duty
-    //pk_p1813 (1): Pulse 18/31 duty
-    //pk_p125 (2): Pulse 1/8 duty
-    //pk_poly4 (3): Poly 4
-    //pk_poly5 (4): Poly 5
-    //pk_poly9 (5): Poly 9
-    //pk_poly4_5 (6): Poly 4 -> Poly 5
+    //Do note that the maximum frequency that can be played is below half of your sample rate, anything higher than that will have "beating" artifacts.
+    //The available instrument types are identifiable with the pk_ constants.
+    //More instrument information is available in the definition for pokey_get_instrument_name.
     
     if (__pokey_init) {
         __pokey_sound(
@@ -102,5 +105,29 @@
     //clock speed of NTSC console
     //(clock / (note + 4)) / (note + 4 + 1)
     return (1789790/__note)/(__note+1)
+
+
+#define pokey_get_instrument_name
+    ///pokey_get_instrument_name(type)
+    //Returns a string with the internal name of the selected instrument.
+    //Available instrument types:
+    //pk_pulse (0): Pulse 1/2 duty
+    //pk_p1813 (1): Pulse 18/31 duty
+    //pk_p125 (2): Pulse 1/8 duty
+    //pk_poly4 (3): Poly 4
+    //pk_poly5 (4): Poly 5
+    //pk_poly9 (5): Poly 9
+    //pk_poly4_5 (6): Poly 4 -> Poly 5
+    
+    return pick(
+        median(0,argument0,6),
+        "Pulse 1/2 duty",
+        "Pulse 18/31 duty",
+        "Pulse 1/8 duty",
+        "Poly 4",
+        "Poly 5",
+        "Poly 9",
+        "Poly 4 -> Poly 5"
+    )
 //
 //

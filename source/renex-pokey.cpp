@@ -124,6 +124,7 @@ void copy_settings(volatile pokey_settings*,volatile pokey_settings*);
 void pokey_init();
 void pokey_set_channel(int, unsigned char, double, float, float);
 void pokey_push_settings();
+int pokey_get_voices();
 void pokey_timer_callback();
 void pokey_generate(int);
 
@@ -348,6 +349,14 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
     return 0;
 }
 
+GMREAL __pokey_get_voices() {
+    ///pokey_get_voices()
+    //Returns the current number of active channels.
+    //A channel is considered active when frequency and volume are not zero.
+    
+    return pokey_get_voices();
+}
+
 
 //---------------------------------------------------------------------------//
 //POKEY api
@@ -382,6 +391,18 @@ void pokey_push_settings() {
     //update mailbox if allowed
         if (pokey_settings_b.ready == false)
             copy_settings(&pokey_settings_a, &pokey_settings_b);
+}
+
+int pokey_get_voices() {
+    int channel, chancount;
+    
+    for (channel = 0, chancount = 0; channel < pokey_active_channels; ++channel) {
+        if (pokey_settings_c.chan_freq[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
+            ++chancount;
+        }
+    }
+    
+    return (int)chancount;
 }
 
 void pokey_timer_callback() {
