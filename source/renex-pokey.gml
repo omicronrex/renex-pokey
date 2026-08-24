@@ -47,13 +47,13 @@
     //Starts playing sound in a channel.
     //To stop a channel, set the volume to 0.
     //Available instrument types:
-    //0: Pulse 1/2 duty
-    //1: Pulse 18/31 duty
-    //2: Pulse 1/8 duty
-    //3: Poly 4
-    //4: Poly 5
-    //5: Poly 9
-    //6: Poly 4 -> Poly 5
+    //pk_pulse (0): Pulse 1/2 duty
+    //pk_p1813 (1): Pulse 18/31 duty
+    //pk_p125 (2): Pulse 1/8 duty
+    //pk_poly4 (3): Poly 4
+    //pk_poly5 (4): Poly 5
+    //pk_poly9 (5): Poly 9
+    //pk_poly4_5 (6): Poly 4 -> Poly 5
     
     if (__pokey_init) {
         __pokey_sound(

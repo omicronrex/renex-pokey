@@ -21,12 +21,12 @@
   was responsible for reading controller input and, among other things, had
   limited sound output capabilities through 4 builtin programmable sound
   generators using simplistic pulse and noise models. When you think of
-  "dat Atari sound doe", that's a POKEY chip.
+  "dat Atari sound doe", that's a POKEY chip in action.
   
   This extension provides a modern reimplementation of the sound core of the
   POKEY chip, with customizable channel counts, high quality audio output,
-  and optional accurate frequency response and stereo panning values. You can
-  still completely ignore everything though, if you're going for accurate
+  and optional accurate frequency tuning and stereo panning values. You can
+  still completely ignore everything though - if you're going for accurate
   retro sound, you can use settings that match your expected sound aesthetic.
   
   
@@ -75,13 +75,13 @@
   
     Available instrument types:
   
-  - 0: Pulse 1/2 duty
-  - 1: Pulse 18/31 duty
-  - 2: Pulse 1/8 duty
-  - 3: Poly 4
-  - 4: Poly 5
-  - 5: Poly 9
-  - 6: Poly 4 -> Poly 5
+  - pk_pulse (0): Pulse 1/2 duty
+  - pk_p1813 (1): Pulse 18/31 duty
+  - pk_p125 (2): Pulse 1/8 duty
+  - pk_poly4 (3): Poly 4
+  - pk_poly5 (4): Poly 5
+  - pk_poly9 (5): Poly 9
+  - pk_poly4_5 (6): Poly 4 -> Poly 5
   
   
 - pokey_stop()

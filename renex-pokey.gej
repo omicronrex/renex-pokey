@@ -87,7 +87,43 @@
 					"returntype": 2
 				}
 			],
-			"constants": []
+			"constants": [
+				{
+					"name": "pk_pulse",
+					"value": "0",
+					"hidden": false
+				},
+				{
+					"name": "pk_p1813",
+					"value": "1",
+					"hidden": false
+				},
+				{
+					"name": "pk_p125",
+					"value": "2",
+					"hidden": false
+				},
+				{
+					"name": "pk_poly4",
+					"value": "3",
+					"hidden": false
+				},
+				{
+					"name": "pk_poly5",
+					"value": "4",
+					"hidden": false
+				},
+				{
+					"name": "pk_poly9",
+					"value": "5",
+					"hidden": false
+				},
+				{
+					"name": "pk_poly4_5",
+					"value": "6",
+					"hidden": false
+				}
+			]
 		},
 		{
 			"filename": "renex-pokey.dll",
