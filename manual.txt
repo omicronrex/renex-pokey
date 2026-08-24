@@ -42,8 +42,7 @@
 
     Starts the sound engine with the desired settings.
     The sample rate is limited by the system's capabilities. Usually, values
-    between 8000 and 48000 are acceptable. You can pass 0 or 'noone' to use
-    the system's default sample rate, for the clearest audio possible.
+    between 8000 and 48000 are acceptable.
     The number of channels is the number of unique sound voices to use, limited
     between 1 and 32. Each channel can play a single note at a time.
 
@@ -113,6 +112,11 @@
     The available instrument types are identifiable with the pk_ constants.
     More instrument information is available in the definition for
     pokey_get_instrument_name.
+
+
+- pokey_get_voices()
+    Returns the current number of active channels.
+    A channel is considered active when frequency and volume are not zero.
 
 
 - pokey_stop()

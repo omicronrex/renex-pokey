@@ -17,7 +17,6 @@
     //Starts the sound engine with the desired settings.
     //The sample rate is limited by the system's capabilities.
     //Usually, values between 8000 and 48000 are acceptable.
-    //You can pass 0 or 'noone' to use the system's default sample rate, for the clearest audio possible.
     //The number of channels is the number of unique sound voices to use, limited between 1 and 32.
     //Each channel can play a single note at a time.
     
@@ -27,10 +26,11 @@
     }
     
     __pokey_channels=median(1,argument1,32)
+    __pokey_samplerate=median(8000,argument0,48000)
     
-    __pokey_samplerate=__pokey_dll_init(
+    __pokey_dll_init(
         window_handle(),
-        argument0,
+        __pokey_samplerate,
         __pokey_channels
     )
     
