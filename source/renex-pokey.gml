@@ -3,7 +3,7 @@
         __pokey_version,
         __pokey_init,
         __pokey_channels,
-        __pokey_samplerate;
+        __pokey_maxfreq;
     
     __pokey_version=100
     
@@ -25,12 +25,15 @@
         exit
     }
     
+    var samplerate;
+    
     __pokey_channels=median(1,argument1,32)
-    __pokey_samplerate=median(8000,argument0,48000)
+    samplerate=median(8000,argument0,48000)
+    __pokey_maxfreq=samplerate div 2
     
     __pokey_dll_init(
         window_handle(),
-        __pokey_samplerate,
+        samplerate,
         __pokey_channels
     )
     
@@ -62,7 +65,7 @@
         __pokey_sound(
             median(0,argument0,__pokey_channels-1),
             median(0,argument1,6),
-            median(0,argument2,__pokey_samplerate),
+            median(0,argument2,__pokey_maxfreq),
             sqr(median(0,argument3,1)),
             median(-1,argument4,1),
         )
