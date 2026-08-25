@@ -1,6 +1,6 @@
-caption=
-width=800
-height=608
+caption=renex pokey test program
+width=1300
+height=450
 snap_x=32
 snap_y=32
 isometric=0
