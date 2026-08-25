@@ -109,7 +109,7 @@
 			],
 			"constants": [
 				{
-					"name": "pk_pulse",
+					"name": "pk_square",
 					"value": "0",
 					"hidden": false
 				},

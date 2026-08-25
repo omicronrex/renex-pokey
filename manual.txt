@@ -42,20 +42,20 @@
   shifted such that the output pitch matches the set input frequency, and the
   known broken frequency values have not been reproduced. We also supply a
   12.5% duty square wave, which was not originally present as a preset, but is
-  frequently used in 'retro' soundscapes which made it feel relevant here.
+  frequently used in 'retro' soundscapes which felt relevant to include.
   
   
   Available instrument types:
 
-  pk_pulse (0): Pulse 1/2 duty
+  pk_pulse (0): Square
   - A standard 50% duty square wave.
   
-  pk_p1813 (1): Pulse 18/31 duty
+  pk_p1813 (1): Pulse 18-13 duty
   - This is the POKEY's unique flavor of square wave, with an approximate
-    58% duty cycle. Sounds softer than a 50%.
+    58% duty cycle. Sounds softer than the regular square wave.
   
-  pk_p125 (2): Pulse 1/8 duty
-  - A more open sound 12.5% duty square wave. Commonly heard on NES games.
+  pk_p125 (2): Pulse 12.5% duty
+  - 12.5% duty square wave. A more open sound, commonly heard on NES games.
   
   pk_poly4 (3): Poly 4
   - A 4-bit polynomial counter. Sounds like a bass instrument.
@@ -89,7 +89,7 @@
     Usually, values between 8000 and 48000 are acceptable.
     The number of channels is the number of unique voices that can be played
     simultaneously, limited between 1 and 32. This limit is not final - just
-    let me know if you need more voices for your application.
+    let me know if you need more voices for your specific application.
 
 
 - pokey_update()
@@ -110,10 +110,10 @@
 - pokey_get_byte_frequency(byte)
   - byte: note id (0-254)
   
-    Returns the frequency in Hz of a note byte from 0 to 254 as heard in the
-    original POKEY chip with default settings. If you're going for a retro
-    aesthetic, using only frequencies returned by this function should provide
-    a more authentic sound flavor.
+    Returns a corrected frequency value of a note byte from 0 to 254 as heard
+    in the original POKEY chip with default settings. If you're going for a
+    retro aesthetic, using only frequencies returned by this function should
+    provide the more authentic Atari sound flavor.
 
 
 - pokey_get_instrument_name(type)

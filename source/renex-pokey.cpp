@@ -14,8 +14,7 @@
 //---------------------------------------------------------------------------//
 /*todo
 
-- fix apparent frequency of the poly instruments using const arr instead of
-  macro POKEY_CLOCK_FACTOR
+- 
 
 */
 //---------------------------------------------------------------------------//

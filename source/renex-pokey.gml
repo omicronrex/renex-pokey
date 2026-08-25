@@ -122,9 +122,9 @@
     ///pokey_get_instrument_name(type)
     //Returns a string with the internal name of the selected instrument.
     //Available instrument types:
-    //pk_pulse (0): Pulse 1/2 duty
-    //pk_p1813 (1): Pulse 18/31 duty
-    //pk_p125 (2): Pulse 1/8 duty
+    //pk_square (0): Square
+    //pk_p1813 (1): Pulse 18-13 duty
+    //pk_p125 (2): Pulse 12.5% duty
     //pk_poly4 (3): Poly 4
     //pk_poly5 (4): Poly 5
     //pk_poly9 (5): Poly 9
@@ -133,9 +133,9 @@
     
     return pick(
         median(0,argument0,7),
-        "Pulse 1/2 duty",
-        "Pulse 18/31 duty",
-        "Pulse 1/8 duty",
+        "Square",
+        "Pulse 18-13 duty",
+        "Pulse 12.5% duty",
         "Poly 4",
         "Poly 5",
         "Poly 9",
