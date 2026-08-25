@@ -58,10 +58,10 @@
   - A more open sound 12.5% duty square wave. Commonly heard on NES games.
   
   pk_poly4 (3): Poly 4
-  - A 4-bit polynomial counter. A harsh, droning sound.
+  - A 4-bit polynomial counter. Sounds like a bass instrument.
   
   pk_poly5 (4): Poly 5
-  - A 5-bit polynomial counter. Sounds like a bass instrument.
+  - A 5-bit polynomial counter. A harsh, droning sound.
   
   pk_poly9 (5): Poly 9
   - A 9-bit polynomial counter. Sounds like wind or fire.
@@ -69,6 +69,9 @@
   pk_poly4_5 (6): Poly 4 -> Poly 5
   - A 4-bit polynomial counter, lowpassed by a 5-bit polynomial counter.
     Sounds like a car engine.
+
+  pk_poly17 (7): Poly 17
+  - A 17-bit polynomial counter. Sounds like white noise.
 
 
 -------------------------------------------------------------------------------

@@ -51,7 +51,7 @@
 #define pokey_sound
     ///pokey_sound(channel,type,freq,vol,pan)
     //channel: channel to use (0 - 31)
-    //type: instrument id (0 - 6)
+    //type: instrument id (0 - 7)
     //freq: sound frequency in hz
     //volume: channel volume (0 - 1)
     //pan: channel pan (-1 - 1)
@@ -64,7 +64,7 @@
     if (__pokey_init) {
         __pokey_sound(
             median(0,argument0,__pokey_channels-1),
-            median(0,argument1,6),
+            median(0,argument1,7),
             median(0,argument2,__pokey_maxfreq),
             sqr(median(0,argument3,1)),
             median(-1,argument4,1),
@@ -97,17 +97,25 @@
 
 
 #define pokey_get_byte_frequency
-    ///pokey_get_byte_frequency(byte)
+    ///pokey_get_byte_frequency(byte,instrument)
     //byte: note id (0-254)
+    //instrument: instrument type (0-7)
     //Returns the frequency in Hz of a note byte from 0 to 254 as heard in the original POKEY chip with default settings.
     //If you're going for a retro aesthetic, using only frequencies returned by this function should provide a more authentic sound flavor.
-    var __note;
+    var __note,__freq,__type;
     
     __note=median(0,floor(argument0),254)+4
+    __type=median(0,floor(argument1),6)
     
     //clock speed of NTSC console
     //(clock / (note + 4)) / (note + 4 + 1)
-    return (1789790/__note)/(__note+1)
+    __freq=(1789790/__note)/(__note+1)
+    
+    //adjust speed of poly types
+    if (__type>=3) __freq*=1.789790
+    
+    //undo frequency correction
+    return __freq/__pokey_get_tuning(__type)
 
 
 #define pokey_get_instrument_name
@@ -121,16 +129,18 @@
     //pk_poly5 (4): Poly 5
     //pk_poly9 (5): Poly 9
     //pk_poly4_5 (6): Poly 4 -> Poly 5
+    //pk_poly17 (7): Poly 17
     
     return pick(
-        median(0,argument0,6),
+        median(0,argument0,7),
         "Pulse 1/2 duty",
         "Pulse 18/31 duty",
         "Pulse 1/8 duty",
         "Poly 4",
         "Poly 5",
         "Poly 9",
-        "Poly 4 -> Poly 5"
+        "Poly 4 -> Poly 5",
+        "Poly 17"
     )
 //
 //

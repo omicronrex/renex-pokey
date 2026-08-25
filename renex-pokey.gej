@@ -3,7 +3,7 @@
 	"folder": "gm82",
 	"version": "1.0",
 	"author": "renex",
-	"date": "24/08/2026",
+	"date": "25/08/2026",
 	"license": "Free to use, also for commercial games.",
 	"description": "A POKEY-style sound engine for Game Maker 8.2.",
 	"helpfile": "",
@@ -142,6 +142,11 @@
 					"name": "pk_poly4_5",
 					"value": "6",
 					"hidden": false
+				},
+				{
+					"name": "pk_poly17",
+					"value": "7",
+					"hidden": false
 				}
 			]
 		},
@@ -194,6 +199,17 @@
 						2,
 						2,
 						2,
+						2
+					],
+					"returntype": 2
+				},
+				{
+					"name": "__pokey_get_tuning",
+					"extname": "",
+					"calltype": 12,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [
 						2
 					],
 					"returntype": 2

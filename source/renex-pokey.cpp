@@ -60,9 +60,6 @@ extern bool __vibe_check(const wchar_t* file, int line, HRESULT hr) {
 //types and globals
 
 
-//adjustment factor for the lfsr poly instruments
-#define POKEY_CLOCK_FACTOR 1.789790/2.0
-
 //arbitrary limit
 #define NUM_CHANNELS 32
 
@@ -81,10 +78,23 @@ DSBUFFERDESC BufferDescriptor;
 WAVEFORMATEX FormatDescriptor;
 unsigned char* TertiaryBuffer;
 
+//square wave instrument duty cycle
 const float pokey_duty_cycle[3] = {
     0.5f,
     18.f/31.f,
     0.125f
+};
+
+//frequency correction factors for instruments
+const double pokey_tuning[8] = {
+    1.0,
+    1.0,
+    1.0,
+    4.0 / 1.05946309436,
+    4.0,
+    4.0,
+    4.0 / 1.05946309436,
+    4.0,
 };
 
 int update_interval;
@@ -100,6 +110,7 @@ int buffer_sample_rate;
     int pokey_lfsr_reg4[NUM_CHANNELS];
     int pokey_lfsr_reg5[NUM_CHANNELS];
     int pokey_lfsr_reg9[NUM_CHANNELS];
+    int pokey_lfsr_reg17[NUM_CHANNELS];
     int pokey_active_channels;
 
 
@@ -356,6 +367,10 @@ GMREAL __pokey_get_voices() {
     return pokey_get_voices();
 }
 
+GMREAL __pokey_get_tuning(double type) {
+    return pokey_tuning[(int)type];
+}
+
 
 //---------------------------------------------------------------------------//
 //POKEY api
@@ -371,6 +386,7 @@ void pokey_init() {
         pokey_lfsr_reg4[i] = 15;
         pokey_lfsr_reg5[i] = 31;
         pokey_lfsr_reg9[i] = 511;
+        pokey_lfsr_reg17[i] = 131071;
         
         pokey_clock_accumulator[i] = 0;
         pokey_channel_signal[i] = 0;
@@ -423,23 +439,30 @@ void pokey_timer_callback() {
 
 
 int poly4(unsigned char channel) {
-    int r = pokey_lfsr_reg4[channel]>>1;
-    r = (r&~8)|((r&1)^((r&2)>>1))<<3;
+    int r = pokey_lfsr_reg4[channel];
+    r = ((((r + r)) + (((r >> 2) ^ (r >> 3)) & 1))) & 0xf;
     pokey_lfsr_reg4[channel] = r;
     return r&1;
 }
 
 int poly5(unsigned char channel) {
-    int r = pokey_lfsr_reg5[channel]>>1;
-    r = (r&~16)|((r&1)^((r&2)>>1))<<4;
+    int r = pokey_lfsr_reg5[channel];
+    r = (((r + r)) + (((r >> 2) ^ (r >> 4)) & 1)) & 0x1f;
     pokey_lfsr_reg5[channel] = r;
     return r&1;
 }
 
 int poly9(unsigned char channel) {
-    int r = pokey_lfsr_reg9[channel]>>1;
-    r = (r&~256)|((r&1)^((r&8)>>3))<<8;
+    int r = pokey_lfsr_reg9[channel];
+    r = (((r >> 1)) + (((r << 8) ^ (r << 3)) & 0x100)) & 0x1ff;
     pokey_lfsr_reg9[channel] = r;
+    return r&1;
+}
+
+int poly17(unsigned char channel) {
+    int r = pokey_lfsr_reg17[channel];
+    r = ((r >> 1)) + (((r << 16) ^ (r << 11)) & 0x10000);
+    pokey_lfsr_reg17[channel] = r;
     return r&1;
 }
 
@@ -459,9 +482,9 @@ void pokey_generate(int amount) {
     
     //store active channel settings on the local arrays
     for (channel = 0, chancount = 0; channel < pokey_active_channels; ++channel) {
-        frequency[chancount] = pokey_settings_c.chan_freq[channel];
+        type[chancount] = pokey_settings_c.chan_type[channel];
+        frequency[chancount] = pokey_settings_c.chan_freq[channel] * pokey_tuning[type[chancount]];
         if (frequency[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
-            type[chancount] = pokey_settings_c.chan_type[channel];
             period[chancount] = buffer_sample_rate / frequency[channel];
             pan_left[chancount] = min(1.0, 1.0 - pokey_settings_c.chan_pan[channel]) * pokey_settings_c.chan_vol[channel];
             pan_right[chancount] = min(1.0, pokey_settings_c.chan_pan[channel] + 1.0) * pokey_settings_c.chan_vol[channel];
@@ -476,25 +499,26 @@ void pokey_generate(int amount) {
         mix_right = 0;
         
         for (int i = 0; i < chancount; ++i) {
-            channel=chanid[i];
-            
-            if (frequency[channel] > 0) {
-                
+            channel=chanid[i];            
+            if (frequency[channel] > 0) {                
                 if (type[channel] < 0x3) {
+                    //pulse types - per-sample duty cycle
                     pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel] + 1, period[channel]);
                     if (pokey_clock_accumulator[channel] / period[channel] < pokey_duty_cycle[type[channel]])
                         pokey_channel_signal[channel] = 1;
                     else 
                         pokey_channel_signal[channel] = 0;
                 } else {
+                    //poly types - iterate at period crossings
                     ++pokey_clock_accumulator[channel];
-                    if (pokey_clock_accumulator[channel] >= period[channel] / POKEY_CLOCK_FACTOR) {
-                        pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel],period[channel] / POKEY_CLOCK_FACTOR);
+                    if (pokey_clock_accumulator[channel] >= period[channel]) {
+                        pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel],period[channel]);
                         switch (type[channel]) {
                             case 0x3: pokey_channel_signal[channel] = poly4(channel); break;
                             case 0x4: pokey_channel_signal[channel] = poly5(channel); break;
                             case 0x5: pokey_channel_signal[channel] = poly9(channel); break;
                             case 0x6: if (poly5(channel)) pokey_channel_signal[channel] = poly4(channel); break;
+                            case 0x7: pokey_channel_signal[channel] = poly17(channel); break;
                         }
                     }
                 }
