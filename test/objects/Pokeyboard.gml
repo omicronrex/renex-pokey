@@ -63,6 +63,12 @@ draw_rectangle(50,150,50+60*20,250,0)
 draw_set_color(0)
 draw_rectangle(50,150,50+60*20,250,1)
 
+if (mode==1 and note) {
+    u=50+(60*20)*note/254
+    draw_set_color($ff00)
+    draw_line_width(u,150,u,250,2)
+}
+
 o=0 repeat (5) {
     n=0 repeat (12) {
         u=50+(o*12+n)*20
