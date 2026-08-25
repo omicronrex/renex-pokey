@@ -6,9 +6,9 @@
     18 Aug 2026
 
 
-  A modern, high quality reimplementation of a POKEY-style sound engine.
+  A modern, high quality implementation of a POKEY-style sound engine.
 
-  Designed for use with Game Maker 8.2.
+  Written by renex. Designed for Game Maker 8.2.
 
 
 -------------------------------------------------------------------------------
@@ -25,9 +25,50 @@
 
   This extension provides a modern reimplementation of the sound core of the
   POKEY chip, with customizable channel counts, high quality audio output,
-  and optional accurate frequency tuning and stereo panning values. You can
-  still completely ignore everything though - if you're going for accurate
-  retro sound, you can use settings that match your expected sound aesthetic.
+  and accurate frequency tuning and stereo panning values, for use in realtime
+  sound generation for video games and music applications.
+
+
+-------------------------------------------------------------------------------
+
+  Instruments
+  -----------
+  
+  
+  The POKEY chip has a few different presets for its sound generators. Since
+  the goal of this extension is to produce high quality sound rather than to
+  perfectly emulate the chip itself, any duplicates or silent instrument
+  slots have been removed. Additionally, all instrument types have been pitch
+  shifted such that the output pitch matches the set input frequency, and the
+  known broken frequency values have not been reproduced. We also supply a
+  12.5% duty square wave, which was not originally present as a preset, but is
+  frequently used in 'retro' soundscapes which made it feel relevant here.
+  
+  
+  Available instrument types:
+
+  pk_pulse (0): Pulse 1/2 duty
+  - A standard 50% duty square wave.
+  
+  pk_p1813 (1): Pulse 18/31 duty
+  - This is the POKEY's unique flavor of square wave, with an approximate
+    58% duty cycle. Sounds softer than a 50%.
+  
+  pk_p125 (2): Pulse 1/8 duty
+  - A more open sound 12.5% duty square wave. Commonly heard on NES games.
+  
+  pk_poly4 (3): Poly 4
+  - A 4-bit polynomial counter. A harsh, droning sound.
+  
+  pk_poly5 (4): Poly 5
+  - A 5-bit polynomial counter. Sounds like a bass instrument.
+  
+  pk_poly9 (5): Poly 9
+  - A 9-bit polynomial counter. Sounds like wind or fire.
+  
+  pk_poly4_5 (6): Poly 4 -> Poly 5
+  - A 4-bit polynomial counter, lowpassed by a 5-bit polynomial counter.
+    Sounds like a car engine.
 
 
 -------------------------------------------------------------------------------
@@ -41,17 +82,18 @@
   - channels: number of channels (1-32)
 
     Starts the sound engine with the desired settings.
-    The sample rate is limited by the system's capabilities. Usually, values
-    between 8000 and 48000 are acceptable.
-    The number of channels is the number of unique sound voices to use, limited
-    between 1 and 32. Each channel can play a single note at a time.
+    The sample rate is limited by the system's capabilities.
+    Usually, values between 8000 and 48000 are acceptable.
+    The number of channels is the number of unique voices that can be played
+    simultaneously, limited between 1 and 32. This limit is not final - just
+    let me know if you need more voices for your application.
 
 
 - pokey_update()
     Updates the pokey engine with the latest instrument data.
-    Note that is is normally done automatically; you only need to call it
+    Note that is is normally done for you; you only need to call it
     manually if you're f.ex. in a deadlock for a loading screen or a room
-    transition, etc.
+    transition.
 
 
 - pokey_get_chromatic_frequency(note)
@@ -74,27 +116,7 @@
 - pokey_get_instrument_name(type)
   - type: instrument id (0-6)
 
-  Returns a string with the internal name of the selected instrument.
-
-  Available instrument types:
-
-  pk_pulse (0): Pulse 1/2 duty
-    A standard 50% duty square wave.
-  pk_p1813 (1): Pulse 18/31 duty
-    This is the POKEY chip's unique flavor of square wave, with an approximate
-    58% duty cycle.
-  pk_p125 (2): Pulse 1/8 duty;
-    A more open sound 12.5% duty square wave, not normally available on a
-    POKEY system. Commonly heard on NES games.
-  pk_poly4 (3): Poly 4
-    A 4-bit polynomial counter. A droning, harsh sound.
-  pk_poly5 (4): Poly 5
-    A 5-bit polynomial counter. Sounds like a bass instrument.
-  pk_poly9 (5): Poly 9
-    A 9-bit polynomial counter. Sounds like wind or fire.
-  pk_poly4_5 (6): Poly 4 -> Poly 5
-    A 4-bit polynomial counter, lowpassed by a 5-bit polynomial counter.
-    Sounds like an engine.
+    Returns a string with the name of the selected instrument.
 
 
 - pokey_sound(channel,type,freq,vol,pan)
@@ -105,13 +127,10 @@
   - pan: channel pan (-1 - 1)
 
     Starts playing sound in a channel. To stop a channel, set the volume to 0.
-
     Do note that the maximum frequency that can be played is below half of
-    your sample rate, anything higher than that will have "beating" artifacts.
-
+    your sample rate, anything too close to it will have "beating" artifacts.
     The available instrument types are identifiable with the pk_ constants.
-    More instrument information is available in the definition for
-    pokey_get_instrument_name.
+    More instrument information is available in the "Instruments" section.
 
 
 - pokey_get_voices()
