@@ -209,8 +209,8 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
         ));
         vibe_check(PrimaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
         
-        //about a 4x safety border (like 8 frames)
-        buffer_length = buffer_amount * 4;
+        //about an 8x safety border (120ms)
+        buffer_length = buffer_amount * 8;
         
         vibe_check(Device -> CreateSoundBuffer(
             describe_buffer(
@@ -267,7 +267,7 @@ int secondary_buffer_query() {
         }        
         
         //* 2 channels
-        DWORD write_size = (play_head + buffer_amount * 2) - writewrap;
+        DWORD write_size = (play_head + buffer_amount * 4) - writewrap;
     
     
     //if we're running too fast, nop out
@@ -453,7 +453,7 @@ int poly5(unsigned char channel) {
 
 int poly9(unsigned char channel) {
     int r = pokey_lfsr_reg9[channel];
-    r = (((r >> 1)) + (((r << 8) ^ (r << 3)) & 0x100)) & 0x1ff;
+    r = ((r >> 1)) + (((r << 8) ^ (r << 3)) & 0x100);
     pokey_lfsr_reg9[channel] = r;
     return r&1;
 }
