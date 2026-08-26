@@ -17,23 +17,25 @@
     //Starts the sound engine with the desired settings.
     //The sample rate is limited by the system's capabilities.
     //Usually, values between 8000 and 48000 are acceptable.
-    //The number of channels is the number of unique sound voices to use, limited between 1 and 32.
-    //Each channel can play a single note at a time.
+    //You can use a lower sample rate as a sort of low-pass filter, depending on your stylistic preferences.
+    //The number of channels is the number of unique voices that can be played simultaneously, limited between 1 and 32.
+    //This limit is not final, just let me know if you need more voices for your specific application.
     
     if (__pokey_init) {
         show_error("Error in function pokey_init: pokey is already initialized.",false)
         exit
     }
     
-    var samplerate;
+    var sample_rate;
     
+    sample_rate=median(8000,argument0,48000)
     __pokey_channels=median(1,argument1,32)
-    samplerate=median(8000,argument0,48000)
-    __pokey_maxfreq=samplerate div 2
+    
+    __pokey_maxfreq=sample_rate div 2
     
     __pokey_dll_init(
         window_handle(),
-        samplerate,
+        sample_rate,
         __pokey_channels
     )
     
@@ -43,7 +45,8 @@
 #define pokey_update()
     ///pokey_update()
     //Updates the pokey engine with the latest instrument data.
-    //Note that is is normally done automatically; you only need to call it manually if you're f.ex. in a deadlock for a loading screen or a room transition, etc.
+    //Note that is is normally done automatically for you; you only need to call it manually if you're f.ex. in a deadlock for a loading screen or a room transition.
+    //Otherwise, do not call this function.
     
     if (__pokey_init) __pokey_dll_update()
 
@@ -57,7 +60,7 @@
     //pan: channel pan (-1 - 1)
     //Starts playing sound in a channel.
     //To stop a channel, set the volume to 0.
-    //Do note that the maximum frequency that can be played is below half of your sample rate, anything higher than that will have "beating" artifacts.
+    //Do note that the maximum frequency that can be played is below half of your sample rate, anything too close to it will have "beating" artifacts.
     //The available instrument types are identifiable with the pk_ constants.
     //More instrument information is available in the definition for pokey_get_instrument_name.
     
@@ -66,7 +69,7 @@
             median(0,argument0,__pokey_channels-1),
             median(0,argument1,7),
             median(0,argument2,__pokey_maxfreq),
-            sqr(median(0,argument3,1)),
+            median(0,argument3,1),
             median(-1,argument4,1),
         )
     }
@@ -76,6 +79,7 @@
     ///pokey_stop()
     //Silences all channels.
     //Calling this function is equivalent to setting the volume to 0 on all channels.
+    
     var __i;
     
     if (__pokey_init) {
@@ -100,8 +104,9 @@
     ///pokey_get_byte_frequency(byte,instrument)
     //byte: note id (0-254)
     //instrument: instrument type (0-7)
-    //Returns the frequency in Hz of a note byte from 0 to 254 as heard in the original POKEY chip with default settings.
-    //If you're going for a retro aesthetic, using only frequencies returned by this function should provide a more authentic sound flavor.
+    //Returns a corrected frequency value of a note byte from 0 to 254 as heard in the original POKEY chip with default settings.
+    //If you're going for a retro aesthetic, using only frequencies returned by this function should provide the most authentic Atari sound flavor.
+    
     var __note,__freq,__type;
     
     __note=median(0,floor(argument0),254)+4

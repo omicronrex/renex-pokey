@@ -397,7 +397,7 @@ void pokey_init() {
 void pokey_set_channel(int channel, unsigned char type, double freq, float vol, float pan) {
     pokey_settings_a.chan_type[channel] = type;
     pokey_settings_a.chan_freq[channel] = freq;
-    pokey_settings_a.chan_vol[channel] = vol;
+    pokey_settings_a.chan_vol[channel] = vol*vol;
     pokey_settings_a.chan_pan[channel] = pan;
 }
 

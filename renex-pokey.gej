@@ -5,7 +5,7 @@
 	"author": "renex",
 	"date": "25/08/2026",
 	"license": "Free to use, also for commercial games.",
-	"description": "A POKEY-style sound engine for Game Maker 8.2.",
+	"description": "A modern, high quality implementation of a POKEY-style sound engine.",
 	"helpfile": "",
 	"hidden": false,
 	"dependencies": [

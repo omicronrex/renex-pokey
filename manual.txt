@@ -17,16 +17,16 @@
   ------
 
 
-  POKEY is a co-processor present in some of Atari's first home consoles. It
-  was responsible for reading controller input and, among other things, had
-  limited sound output capabilities through 4 builtin programmable sound
-  generators using simplistic pulse and noise models. When you think of
-  "dat Atari sound doe", that's a POKEY chip in action.
+  POKEY is a co-processor present in some of Atari's first video game systems.
+  It was responsible for reading controller input and, among other things, had
+  limited sound output capabilities through four simple programmable sound
+  generators using basic pulse and noise models. When you think of "dat Atari
+  sound doe", yep, that's a POKEY chip in action.
 
   This extension provides a modern reimplementation of the sound core of the
   POKEY chip, with customizable channel counts, high quality audio output,
   and accurate frequency tuning and stereo panning values, for use in realtime
-  sound generation for video games and music applications.
+  sound generation in video games and music applications.
 
 
 -------------------------------------------------------------------------------
@@ -37,15 +37,16 @@
   
   The POKEY chip has a few different presets for its sound generators. Since
   the goal of this extension is to produce high quality sound rather than to
-  perfectly emulate the chip itself, any duplicates or silent instrument
-  slots have been removed. Additionally, all instrument types have been pitch
-  shifted such that the output pitch matches the set input frequency, and the
-  known broken frequency values have not been reproduced. We also supply a
-  12.5% duty square wave, which was not originally present as a preset, but is
-  frequently used in 'retro' soundscapes which felt relevant to include.
+  perfectly emulate the chip itself, any duplicates, buggy, or silent
+  instrument slots have been removed. Additionally, all instrument types have
+  been pitch shifted such that the output pitch matches the set input
+  frequency, and the known broken frequency values have not been reproduced.
+  We also supply a 12.5% duty square wave, which was not originally present as
+  a preset, but is frequently used in 'retro' soundscapes which felt relevant
+  to include.
   
   
-  Available instrument types:
+  The available instrument types are identified by the following constants:
 
   pk_pulse (0): Square
   - A standard 50% duty square wave.
@@ -71,7 +72,7 @@
     Sounds like a car engine.
 
   pk_poly17 (7): Poly 17
-  - A 17-bit polynomial counter. Sounds like white noise.
+  - A 17-bit polynomial counter. White noise equivalent.
 
 
 -------------------------------------------------------------------------------
@@ -85,22 +86,23 @@
   - channels: number of channels (1-32)
 
     Starts the sound engine with the desired settings.
-    The sample rate is limited by the system's capabilities.
-    Usually, values between 8000 and 48000 are acceptable.
+    The sample rate is limited by the system's capabilities. Usually, values
+    between 8000 and 48000 are acceptable. You can use a lower sample rate as
+    a sort of low-pass filter, depending on your stylistic preferences.
     The number of channels is the number of unique voices that can be played
-    simultaneously, limited between 1 and 32. This limit is not final - just
+    simultaneously, limited between 1 and 32. This limit is not final, just
     let me know if you need more voices for your specific application.
 
 
 - pokey_update()
     Updates the pokey engine with the latest instrument data.
-    Note that is is normally done for you; you only need to call it
-    manually if you're f.ex. in a deadlock for a loading screen or a room
-    transition.
+    Note that is is normally done automatically for you; you only need to
+    call it manually if you're f.ex. in a deadlock for a loading screen or
+    a room transition. Otherwise, do not call this function.
 
 
 - pokey_get_chromatic_frequency(note)
-  - note: note to convert to hertz
+  - note: note number to convert to hertz
   
     Returns the frequency in Hz of a note on the chromatic scale. The first
     note is A0 (27.5Hz), with 12 notes in an octave. For example, note 48
@@ -113,13 +115,14 @@
     Returns a corrected frequency value of a note byte from 0 to 254 as heard
     in the original POKEY chip with default settings. If you're going for a
     retro aesthetic, using only frequencies returned by this function should
-    provide the more authentic Atari sound flavor.
+    provide the most authentic Atari sound flavor.
 
 
 - pokey_get_instrument_name(type)
-  - type: instrument id (0-6)
+  - type: instrument id (0-7)
 
-    Returns a string with the name of the selected instrument.
+    Returns a string with the name of the selected instrument. The returned
+    strings are listed in the "Instruments" section of this document.
 
 
 - pokey_sound(channel,type,freq,vol,pan)
