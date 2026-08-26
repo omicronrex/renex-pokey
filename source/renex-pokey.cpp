@@ -501,12 +501,14 @@ void pokey_generate(int amount) {
             channel=chanid[i];            
             if (frequency[channel] > 0) {                
                 if (type[channel] < 0x3) {
-                    //pulse types - per-sample duty cycle
-                    pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel] + 1, period[channel]);
-                    if (pokey_clock_accumulator[channel] / period[channel] < pokey_duty_cycle[type[channel]])
+                    //pulse types - per-sample duty cycle, and latch-off for period change protection
+                    ++pokey_clock_accumulator[channel];
+                    if (pokey_clock_accumulator[channel] >= period[channel]) {
+                        pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel],period[channel]);
                         pokey_channel_signal[channel] = 1;
-                    else 
+                    } else if (pokey_channel_signal[channel] && pokey_clock_accumulator[channel] / period[channel] >= pokey_duty_cycle[type[channel]]) {
                         pokey_channel_signal[channel] = 0;
+                    }
                 } else {
                     //poly types - iterate at period crossings
                     ++pokey_clock_accumulator[channel];
