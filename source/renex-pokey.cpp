@@ -179,7 +179,7 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
     
     
     //initialize some globals
-        update_interval = 10; //ms
+        update_interval = 15; //ms
         buffer_lastpos = 0;
         
         DSCAPS dscaps; 
