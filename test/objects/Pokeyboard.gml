@@ -16,8 +16,8 @@ lib_id=1
 action_id=603
 applies_to=self
 */
-i=0 repeat (8) {
-    u=75+150*i
+i=0 repeat (9) {
+    u=100+125*i
     if (point_in_rectangle(mouse_x,mouse_y,u,50,u+100,100)) type=i
 i+=1}
 
@@ -49,8 +49,8 @@ lib_id=1
 action_id=603
 applies_to=self
 */
-i=0 repeat (8) {
-    u=75+150*i
+i=0 repeat (9) {
+    u=100+125*i
     draw_set_color(pick(type==i,$ffffff,$ff00))
     draw_rectangle(u,50,u+100,100,0)
     draw_set_color(0)

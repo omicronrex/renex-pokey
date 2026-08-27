@@ -85,7 +85,7 @@ const float pokey_duty_cycle[3] = {
 };
 
 //frequency correction factors for instruments
-const double pokey_tuning[8] = {
+const double pokey_tuning[9] = {
     1.0,
     1.0,
     1.0,
@@ -94,6 +94,7 @@ const double pokey_tuning[8] = {
     4.0,
     4.0 / 1.05946309436,
     4.0,
+    4.0
 };
 
 int update_interval;
@@ -520,6 +521,7 @@ void pokey_generate(int amount) {
                             case 0x5: pokey_channel_signal[channel] = poly9(channel); break;
                             case 0x6: if (poly5(channel)) pokey_channel_signal[channel] = poly4(channel); break;
                             case 0x7: pokey_channel_signal[channel] = poly17(channel); break;
+                            case 0x8: if (poly9(channel)) pokey_channel_signal[channel] = poly17(channel); break;
                         }
                     }
                 }

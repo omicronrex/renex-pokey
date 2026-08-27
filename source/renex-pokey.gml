@@ -54,7 +54,7 @@
 #define pokey_sound
     ///pokey_sound(channel,type,freq,vol,pan)
     //channel: channel to use (0 - 31)
-    //type: instrument id (0 - 7)
+    //type: instrument id (0 - 8)
     //freq: sound frequency in hz
     //volume: channel volume (0 - 1)
     //pan: channel pan (-1 - 1)
@@ -67,7 +67,7 @@
     if (__pokey_init) {
         __pokey_sound(
             median(0,argument0,__pokey_channels-1),
-            median(0,argument1,7),
+            median(0,argument1,8),
             median(0,argument2,__pokey_maxfreq),
             median(0,argument3,1),
             median(-1,argument4,1),
@@ -79,7 +79,6 @@
     ///pokey_stop()
     //Silences all channels.
     //Calling this function is equivalent to setting the volume to 0 on all channels.
-    
     var __i;
     
     if (__pokey_init) {
@@ -103,14 +102,14 @@
 #define pokey_get_byte_frequency
     ///pokey_get_byte_frequency(byte,instrument)
     //byte: note id (0-254)
-    //instrument: instrument type (0-7)
+    //instrument: instrument type (0-8)
     //Returns a corrected frequency value of a note byte from 0 to 254 as heard in the original POKEY chip with default settings.
     //If you're going for a retro aesthetic, using only frequencies returned by this function should provide the most authentic Atari sound flavor.
     
     var __note,__freq,__type;
     
     __note=median(0,floor(argument0),254)+4
-    __type=median(0,floor(argument1),6)
+    __type=median(0,floor(argument1),8)
     
     //clock speed of NTSC console
     //(clock / (note + 4)) / (note + 4 + 1)
@@ -135,9 +134,10 @@
     //pk_poly9 (5): Poly 9
     //pk_poly4_5 (6): Poly 4 -> Poly 5
     //pk_poly17 (7): Poly 17
+    //pk_poly917 (8): Poly 9 -> Poly 17
     
     return pick(
-        median(0,argument0,7),
+        median(0,argument0,8),
         "Square",
         "Pulse 18-13 duty",
         "Pulse 12.5% duty",
@@ -145,7 +145,8 @@
         "Poly 5",
         "Poly 9",
         "Poly 4 -> Poly 5",
-        "Poly 17"
+        "Poly 17",
+        "Poly 9 -> Poly 17"
     )
 //
 //

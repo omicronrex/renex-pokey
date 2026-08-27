@@ -3,7 +3,7 @@
 	"folder": "gm82",
 	"version": "1.0",
 	"author": "renex",
-	"date": "25/08/2026",
+	"date": "27/08/2026",
 	"license": "Free to use, also for commercial games.",
 	"description": "A modern, high quality implementation of a POKEY-style sound engine.",
 	"helpfile": "",
@@ -146,6 +146,11 @@
 				{
 					"name": "pk_poly17",
 					"value": "7",
+					"hidden": false
+				},
+				{
+					"name": "pk_poly917",
+					"value": "8",
 					"hidden": false
 				}
 			]

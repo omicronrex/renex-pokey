@@ -72,8 +72,11 @@
     Sounds like a car engine.
 
   pk_poly17 (7): Poly 17
-  - A 17-bit polynomial counter. White noise equivalent.
-
+  - A 17-bit polynomial counter. Sounds like white noise.
+  
+  pk_poly917 (8): Poly 9 -> Poly 17
+  - A 9-bit polynomial counter, lowpassed by a 17-bit polynomial counter.
+    Sounds like rushing water
 
 -------------------------------------------------------------------------------
 
