@@ -78,6 +78,7 @@
   - A 9-bit polynomial counter, lowpassed by a 17-bit polynomial counter.
     Sounds like rushing water
 
+
 -------------------------------------------------------------------------------
 
   Function list
