@@ -5,7 +5,7 @@
         __pokey_channels,
         __pokey_maxfreq;
     
-    __pokey_version=100
+    __pokey_version=101
     
     object_event_add(gm82core_object,ev_step,ev_step_end,"if (__pokey_init) __pokey_dll_update(1000/room_speed)")
 

@@ -3,7 +3,6 @@
 
     RENEX POKEY
     ===========
-    v1.0
     18 Aug 2026
   
   A modern, high quality reimplementation of a POKEY-style sound engine.
@@ -14,7 +13,7 @@
 //---------------------------------------------------------------------------//
 /*todo
 
-- check if i can use update from gml instead with a room speed and stuff
+- 
 
 */
 //---------------------------------------------------------------------------//
@@ -54,6 +53,16 @@ extern bool __vibe_check(const wchar_t* file, int line, HRESULT hr) {
 
 #define vibe_check(a) __vibe_check(WIDE1(__FILE__),__LINE__,a)
 
+extern void debug_message(const wchar_t* msg) {    
+    MessageBoxW(0, msg, L"Debug message", 0);
+}
+
+extern void debug_message(const wchar_t* msg, int value) {    
+    wchar_t buf[1024];
+    _snwprintf_s(buf, 1024, msg, value);
+    MessageBoxW(0, buf, L"Debug message", 0);
+}
+
 
 //---------------------------------------------------------------------------//
 //types and globals
@@ -76,6 +85,7 @@ LPDIRECTSOUNDBUFFER SecondaryBuffer;
 DSBUFFERDESC BufferDescriptor;
 WAVEFORMATEX FormatDescriptor;
 unsigned char* TertiaryBuffer;
+unsigned char* QuadBuffer;
 
 //square wave instrument duty cycle
 const float pokey_duty_cycle[3] = {
@@ -102,7 +112,10 @@ int buffer_length;
 int buffer_amount;
 int buffer_lastpos;
 int buffer_sample_rate;
-double generate_amount, generating_amount, sample_decrement;
+
+int tert_length;
+int tert_readpos;
+int tert_writepos;
 
 
 //pokey internal state
@@ -119,8 +132,7 @@ double generate_amount, generating_amount, sample_decrement;
     int pokey_settings_sizeof;
     volatile pokey_settings
         pokey_settings_a,
-        pokey_settings_b,
-        pokey_settings_c;
+        pokey_settings_b;
 
 
 //---------------------------------------------------------------------------//
@@ -135,7 +147,7 @@ void copy_settings(volatile pokey_settings*,volatile pokey_settings*);
 
 void pokey_init();
 void pokey_set_channel(int, unsigned char, double, float, float);
-void pokey_push_settings();
+void pokey_frame_update(double);
 int pokey_get_voices();
 void pokey_timer_callback();
 void pokey_generate(int);
@@ -182,8 +194,6 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
     //initialize some globals
         update_interval = 15; //ms
         buffer_lastpos = 0;
-        generate_amount = 0;
-        generating_amount = 0;
         
         pokey_settings_sizeof = sizeof(pokey_settings);    
         
@@ -199,8 +209,7 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
             buffer_sample_rate = dscaps.dwMaxSecondarySampleRate;
         }
         
-        buffer_amount = (int)((buffer_sample_rate / 1000.0) * 100);//update_interval * 4.0);
-        sample_decrement = 1000.0 / buffer_sample_rate;
+        buffer_amount = (int)(buffer_sample_rate/10);
     
     
     //create the two dsound buffers
@@ -233,6 +242,23 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
         pokey_init();
     
     
+    //set up tertiary circular buffer with a decent amount of space
+    //effectively, until dsound's 10ms update rate jitter is negligible
+        tert_length = (buffer_sample_rate / 10) * 2;
+        TertiaryBuffer = (unsigned char*)malloc(tert_length);
+        tert_readpos = 0;
+        tert_writepos = 0;
+    
+    
+    //set up 4th buffer for copy into the secondary
+        QuadBuffer = (unsigned char*)malloc(tert_length);
+    
+    
+    //get it going
+        pokey_timer_callback();
+        vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
+        
+        
     //set up callback for refilling the secondary buffer
         current_timer = timeSetEvent(
             update_interval,
@@ -240,13 +266,7 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
             timer_callback,
             0,
             TIME_PERIODIC
-        );
-    
-    
-    //get it going
-        TertiaryBuffer = (unsigned char*)malloc(buffer_length);
-        pokey_timer_callback();
-        vibe_check(SecondaryBuffer -> Play(0, 0, DSBPLAY_LOOPING));
+        );    
 }
 
 int secondary_buffer_query() {
@@ -295,8 +315,23 @@ void secondary_buffer_fill(int amount) {
     DWORD lock_size1;
     void* lock_chunk2;
     DWORD lock_size2;
-
-
+    
+    
+    //copy tertiary buffer to temp quad buffer
+        int start = tert_readpos;
+        int end = start + amount;
+        if (end > tert_length) {
+            //copy both regions to quad
+            int crop = tert_length - start;
+            memcpy(QuadBuffer,TertiaryBuffer+start,crop);
+            memcpy(QuadBuffer+crop,TertiaryBuffer,amount-crop);
+        } else {
+            memcpy(QuadBuffer,TertiaryBuffer+start,amount);
+        }
+        tert_readpos += amount;
+        if (tert_readpos >= tert_length) tert_readpos -= tert_length;
+    
+    
     //acquire control of secondary buffer
         vibe_check(SecondaryBuffer -> Lock(
             buffer_lastpos,
@@ -309,10 +344,10 @@ void secondary_buffer_fill(int amount) {
         buffer_lastpos = (buffer_lastpos + amount) % buffer_length;
     
     
-    //copy tertiary data to both chunks of secondary buffer
-        memcpy(lock_chunk1, TertiaryBuffer, lock_size1);
+    //copy quad data to both chunks of secondary buffer
+        memcpy(lock_chunk1, QuadBuffer, lock_size1);
         if (lock_chunk2 != NULL)
-            memcpy(lock_chunk2, TertiaryBuffer + lock_size1, lock_size2);
+            memcpy(lock_chunk2, QuadBuffer + lock_size1, lock_size2);
     
     
     //relinquish control of secondary buffer
@@ -351,17 +386,8 @@ GMREAL __pokey_dll_init(double hwnd_real, double samplerate_real, double channel
 }
 
 GMREAL __pokey_dll_update(double gen_real) {    
-    generate_amount = gen_real;
-    pokey_push_settings();
-    /*timeKillEvent(current_timer);
-    current_timer = timeSetEvent(
-        update_interval,
-        update_interval,
-        timer_callback,
-        0,
-        TIME_PERIODIC
-    );*/
-
+    pokey_frame_update(gen_real);
+    
     return 0;
 }
 
@@ -410,7 +436,17 @@ void pokey_init() {
         pokey_channel_signal[i] = 0;
     }
     copy_settings(&pokey_settings_a, &pokey_settings_b);
-    copy_settings(&pokey_settings_a, &pokey_settings_c);
+}
+
+int get_tertiary_health() {
+    int health;
+    
+    if (tert_writepos < tert_readpos)
+        health = tert_writepos + tert_length - tert_readpos;
+    else
+        health = tert_writepos - tert_readpos;
+    
+    return health;
 }
 
 void pokey_set_channel(int channel, unsigned char type, double freq, float vol, float pan) {
@@ -420,15 +456,25 @@ void pokey_set_channel(int channel, unsigned char type, double freq, float vol, 
     pokey_settings_a.chan_pan[channel] = pan;
 }
 
-void pokey_push_settings() {
+void pokey_frame_update(double amount_ms) {
     copy_settings(&pokey_settings_a, &pokey_settings_b);
+    
+    int amount = (int)(amount_ms * (buffer_sample_rate / 1000.0)) * 2;
+    
+    int health = get_tertiary_health();
+    
+    int margin = (int)(tert_length * 0.9);    
+    
+    if (health + amount > margin) amount = margin - health;
+    
+    pokey_generate(amount);
 }
 
 int pokey_get_voices() {
     int channel, chancount;
     
     for (channel = 0, chancount = 0; channel < pokey_active_channels; ++channel) {
-        if (pokey_settings_c.chan_freq[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
+        if (pokey_settings_b.chan_freq[channel] > 0 && pokey_settings_b.chan_vol[channel] > 0) {
             ++chancount;
         }
     }
@@ -438,9 +484,16 @@ int pokey_get_voices() {
 
 void pokey_timer_callback() {
     //fill buffer as necessary
+    
     int amount = secondary_buffer_query();
+    
     if (amount) {
-        pokey_generate(amount);
+        int health = get_tertiary_health();
+        
+        if (health < amount) {        
+            pokey_generate(amount - health);
+        }
+        
         secondary_buffer_fill(amount);
     }
 }
@@ -491,35 +544,25 @@ void pokey_generate(int amount) {
     unsigned char type[NUM_CHANNELS];
     double frequency[NUM_CHANNELS], clkstep[NUM_CHANNELS], period[NUM_CHANNELS];
     double pan_left[NUM_CHANNELS], pan_right[NUM_CHANNELS];
-    bool fresh = true;    
+    
+    for (channel = 0, chancount = 0; channel < pokey_active_channels; ++channel) {
+        type[chancount] = pokey_settings_b.chan_type[channel];
+        frequency[chancount] = pokey_settings_b.chan_freq[channel] * pokey_tuning[type[chancount]];
+        if (frequency[channel] > 0 && pokey_settings_b.chan_vol[channel] > 0) {
+            period[chancount] = buffer_sample_rate / frequency[channel];
+            pan_left[chancount] = min(1.0, 1.0 - pokey_settings_b.chan_pan[channel]) * pokey_settings_b.chan_vol[channel];
+            pan_right[chancount] = min(1.0, pokey_settings_b.chan_pan[channel] + 1.0) * pokey_settings_b.chan_vol[channel];
+            chanid[chancount] = channel;
+            chancount++;
+        }
+    }
     
     
-    //main mixer core
+    //main mixer core    
+    int offset = tert_writepos;
+    int addr;
+    
     for (sample = 0; sample < amount; sample += 2) {
-        //only update settings if done writing a frame
-        generating_amount -= sample_decrement;
-        if (generating_amount <= 0) {
-            copy_settings(&pokey_settings_b, &pokey_settings_c);            
-            generating_amount = generate_amount;            
-            fresh = true;
-        }
-        
-        if (fresh) {
-            fresh = false;
-            //store active channel settings on the local arrays
-            for (channel = 0, chancount = 0; channel < pokey_active_channels; ++channel) {
-                type[chancount] = pokey_settings_c.chan_type[channel];
-                frequency[chancount] = pokey_settings_c.chan_freq[channel] * pokey_tuning[type[chancount]];
-                if (frequency[channel] > 0 && pokey_settings_c.chan_vol[channel] > 0) {
-                    period[chancount] = buffer_sample_rate / frequency[channel];
-                    pan_left[chancount] = min(1.0, 1.0 - pokey_settings_c.chan_pan[channel]) * pokey_settings_c.chan_vol[channel];
-                    pan_right[chancount] = min(1.0, pokey_settings_c.chan_pan[channel] + 1.0) * pokey_settings_c.chan_vol[channel];
-                    chanid[chancount] = channel;
-                    chancount++;
-                }
-            }
-        }
-        
         mix_left = 0;
         mix_right = 0;
         
@@ -563,9 +606,15 @@ void pokey_generate(int amount) {
             mix_right /= chancount;
         }
         
-        TertiaryBuffer[sample + 0] = (int)(128.0 + 127.0 * mix_left);
-        TertiaryBuffer[sample + 1] = (int)(128.0 + 127.0 * mix_right);
+        addr = offset + sample;
+        if (addr >= tert_length) addr -= tert_length;
+        
+        TertiaryBuffer[addr + 0] = (int)(128.0 + 127.0 * mix_left);
+        TertiaryBuffer[addr + 1] = (int)(128.0 + 127.0 * mix_right);
     }
+    
+    tert_writepos += amount;
+    if (tert_writepos >= tert_length) tert_writepos -= tert_length;
 }
 
 
