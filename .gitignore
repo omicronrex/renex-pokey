@@ -1,5 +1,7 @@
 *.gex
 *.dll
-build
+*.exe
+*.7z
 *.py
+build
 desktop.ini

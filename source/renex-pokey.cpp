@@ -3,7 +3,9 @@
 
     RENEX POKEY
     ===========
-    18 Aug 2026
+    v1.0.1
+    29 Aug 2026
+  
   
   A modern, high quality reimplementation of a POKEY-style sound engine.
   
@@ -11,8 +13,26 @@
 
 */
 //---------------------------------------------------------------------------//
-/*todo
+/*
 
+  Changelog
+  ---------
+  
+  
+- v1.0.1 - 29 Aug 2026
+  - added a new poly9-poly17 instrument
+  - rewrote mixer to fix frame length precision
+
+- v1.0.0 - 18 Aug 2026
+  - initial release
+
+*/
+//---------------------------------------------------------------------------//  
+/*
+
+  Todo
+  ----
+  
 - 
 
 */

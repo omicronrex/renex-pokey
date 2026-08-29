@@ -2,13 +2,27 @@
 
     RENEX POKEY
     ===========
-    v1.0
-    18 Aug 2026
+    v1.0.1
+    29 Aug 2026
 
 
   A modern, high quality implementation of a POKEY-style sound engine.
 
   Written by renex. Designed for Game Maker 8.2.
+
+
+-------------------------------------------------------------------------------
+
+  Changelog
+  ---------
+  
+  
+- v1.0.1 - 29 Aug 2026
+  - added a new poly9-poly17 instrument
+  - rewrote mixer to fix frame length precision
+
+- v1.0.0 - 18 Aug 2026
+  - initial release
 
 
 -------------------------------------------------------------------------------
