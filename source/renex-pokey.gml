@@ -7,7 +7,7 @@
     
     __pokey_version=100
     
-    object_event_add(gm82core_object,ev_step,ev_step_end,"if (__pokey_init) __pokey_dll_update()")
+    object_event_add(gm82core_object,ev_step,ev_step_end,"if (__pokey_init) __pokey_dll_update(1000/room_speed)")
 
 
 #define pokey_init
@@ -48,7 +48,7 @@
     //Note that is is normally done automatically for you; you only need to call it manually if you're f.ex. in a deadlock for a loading screen or a room transition.
     //Otherwise, do not call this function.
     
-    if (__pokey_init) __pokey_dll_update()
+    if (__pokey_init) __pokey_dll_update(1000/room_speed)
 
 
 #define pokey_sound
