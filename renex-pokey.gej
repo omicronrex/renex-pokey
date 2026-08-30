@@ -53,6 +53,15 @@
 					"returntype": 2
 				},
 				{
+					"name": "pokey_get_voices",
+					"extname": "",
+					"calltype": 2,
+					"helpline": "pokey_get_voices()",
+					"hidden": false,
+					"argtypes": [],
+					"returntype": 2
+				},
+				{
 					"name": "pokey_init",
 					"extname": "",
 					"calltype": 2,
@@ -162,15 +171,6 @@
 			"init": "",
 			"final": "",
 			"functions": [
-				{
-					"name": "pokey_get_voices",
-					"extname": "__pokey_get_voices",
-					"calltype": 12,
-					"helpline": "pokey_get_voices()",
-					"hidden": false,
-					"argtypes": [],
-					"returntype": 2
-				},
 				{
 					"name": "__pokey_dll_init",
 					"extname": "",

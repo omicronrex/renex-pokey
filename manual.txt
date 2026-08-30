@@ -112,11 +112,6 @@
     let me know if you need more voices for your specific application.
 
 
-- pokey_update()
-    Updates the pokey engine with the latest instrument data.
-    Note that is is normally done automatically for you; you only need to
-    call it manually if you're f.ex. in a deadlock for a loading screen or
-    a room transition. Otherwise, do not call this function.
 
 
 - pokey_get_chromatic_frequency(note)
@@ -165,6 +160,13 @@
 - pokey_stop()
     Silences all channels. Calling this function is equivalent to setting the
     volume to 0 on all channels.
+
+
+- pokey_update()
+    Updates the pokey engine with the latest instrument data.
+    Note that is is normally done automatically for you; you only need to
+    call it manually if you're f.ex. in a deadlock for a loading screen or
+    a room transition. Otherwise, do not call this function.
 
 
 -------------------------------------------------------------------------------
