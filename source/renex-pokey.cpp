@@ -118,7 +118,7 @@ extern void debug_message(const wchar_t* msg, int value) {
         4.0 / 1.05946309436,
         4.0,
         4.0,
-        4.0 / 1.05946309436,
+        4.0,
         4.0,
         4.0
     };
