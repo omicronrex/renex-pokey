@@ -112,6 +112,11 @@
     let me know if you need more voices for your specific application.
 
 
+- pokey_set_volume(volume)
+  - volume: volume value (0-1)
+  
+    Sets the overall volume level for the pokey engine.
+    Active channels are normalized to this value when they are mixed.
 
 
 - pokey_get_chromatic_frequency(note)

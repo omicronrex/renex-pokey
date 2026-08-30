@@ -75,6 +75,15 @@
     }
 
 
+#define pokey_set_volume
+    ///pokey_set_volume(volume)
+    //volume: volume value (0-1)
+    //Sets the overall volume level for the pokey engine.
+    //Active channels are normalized to this value when they are mixed.
+    
+    __pokey_set_volume(median(0,argument0,1))
+
+
 #define pokey_get_voices
     ///pokey_get_voices()
     //Returns the current number of active channels.

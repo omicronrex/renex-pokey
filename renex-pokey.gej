@@ -74,6 +74,17 @@
 					"returntype": 2
 				},
 				{
+					"name": "pokey_set_volume",
+					"extname": "",
+					"calltype": 2,
+					"helpline": "pokey_set_volume(volume)",
+					"hidden": false,
+					"argtypes": [
+						2
+					],
+					"returntype": 2
+				},
+				{
 					"name": "pokey_sound",
 					"extname": "",
 					"calltype": 2,
@@ -196,6 +207,37 @@
 					"returntype": 2
 				},
 				{
+					"name": "__pokey_get_tuning",
+					"extname": "",
+					"calltype": 12,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [
+						2
+					],
+					"returntype": 2
+				},
+				{
+					"name": "__pokey_get_voices",
+					"extname": "",
+					"calltype": 12,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [],
+					"returntype": 2
+				},
+				{
+					"name": "__pokey_set_volume",
+					"extname": "",
+					"calltype": 12,
+					"helpline": "",
+					"hidden": true,
+					"argtypes": [
+						2
+					],
+					"returntype": 2
+				},
+				{
 					"name": "__pokey_sound",
 					"extname": "",
 					"calltype": 12,
@@ -206,17 +248,6 @@
 						2,
 						2,
 						2,
-						2
-					],
-					"returntype": 2
-				},
-				{
-					"name": "__pokey_get_tuning",
-					"extname": "",
-					"calltype": 12,
-					"helpline": "",
-					"hidden": true,
-					"argtypes": [
 						2
 					],
 					"returntype": 2

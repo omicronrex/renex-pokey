@@ -145,6 +145,7 @@ extern void debug_message(const wchar_t* msg, int value) {
     int pokey_lfsr_reg9[NUM_CHANNELS];
     int pokey_lfsr_reg17[NUM_CHANNELS];
     int pokey_active_channels;
+    double pokey_maxvol;
 
     struct pokey_settings {
         unsigned char chan_type[NUM_CHANNELS];
@@ -171,6 +172,7 @@ void copy_settings(volatile pokey_settings*,volatile pokey_settings*);
 
 void pokey_init();
 void pokey_set_channel(int, unsigned char, double, float, float);
+void pokey_set_volume(double);
 void pokey_frame_update(double);
 int pokey_get_voices();
 void pokey_timer_callback();
@@ -441,7 +443,14 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
     return 0;
 }
 
+
+GMREAL __pokey_set_volume(double volume) {
+    pokey_set_volume(volume);
     
+    return 0;
+}
+
+
 GMREAL __pokey_get_voices() {
     return pokey_get_voices();
 }
@@ -499,6 +508,15 @@ void pokey_set_channel(int channel, unsigned char type, double freq, float vol, 
     pokey_settings_a.chan_vol[channel] = vol*vol;
     pokey_settings_a.chan_pan[channel] = pan;
 }
+
+
+void pokey_set_volume(double maxvol) {
+    //changes the maximum mixer volume after all channels are added together
+    //(in log scale)
+    
+    pokey_maxvol = maxvol * maxvol;
+}
+
 
 void pokey_frame_update(double amount_ms) {
     //updates the generator settings, and generates one frame of audio
@@ -603,6 +621,7 @@ void pokey_generate(int amount) {
         double pan_left[NUM_CHANNELS], pan_right[NUM_CHANNELS];
         
         int chancount = 0;
+        double mix_normal = 0;
         REPEAT(channel, pokey_active_channels) {
             type[chancount] = pokey_settings_b.chan_type[channel];
             frequency[chancount] = pokey_settings_b.chan_freq[channel] * pokey_tuning[type[chancount]];
@@ -612,10 +631,12 @@ void pokey_generate(int amount) {
                 pan_left[chancount] = min(1.0, 1.0 - pokey_settings_b.chan_pan[channel]) * pokey_settings_b.chan_vol[channel];
                 pan_right[chancount] = min(1.0, pokey_settings_b.chan_pan[channel] + 1.0) * pokey_settings_b.chan_vol[channel];
                 chanid[chancount] = channel;
+                mix_normal += pokey_settings_b.chan_vol[channel];
                 chancount++;
             }
         }
-    }
+        if (mix_normal < 1) mix_normal = 1.0;
+        mix_normal = pokey_maxvol / mix_normal;
     
     
     //main mixer core    
@@ -660,9 +681,10 @@ void pokey_generate(int amount) {
                 mix_right += pokey_channel_signal[channel] * pan_right[channel];
             }
             
-        if (chancount > 0) {
-            mix_left /= chancount;
-            mix_right /= chancount;
+            //finalize mix by normalizing the volume
+                mix_left *= mix_normal;
+                mix_right *= mix_normal;
+            
             
             //calculate write pos on circular buffer
                 addr = tert_writepos + sample;
