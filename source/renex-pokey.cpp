@@ -50,7 +50,7 @@
 #define GMREAL extern "C" __declspec(dllexport) double __cdecl
 #define GMSTR extern "C" __declspec(dllexport) char* __cdecl
 
-#define REPEAT(x,n) for (int x = 0; x < n; ++x)
+#define REPEAT(x,n) for (int x = 0; x < (n); ++x)
 
 
 //---------------------------------------------------------------------------//
