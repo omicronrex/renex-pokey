@@ -3,8 +3,8 @@
 
     RENEX POKEY
     ===========
-    v1.0.1
-    29 Aug 2026
+    v1.0.3
+    6 Sep 2026
   
   
   A modern, high quality reimplementation of a POKEY-style sound engine.
@@ -14,11 +14,17 @@
 */
 //---------------------------------------------------------------------------//
 /*
-
   Changelog
   ---------
-  
-  
+
+
+- v1.0.3 - 6 Sep 26
+  - fixed a bug that broke multiple sound channels
+
+- v1.0.2 - 4 Sep 26  
+  - added function pokey_set_volume
+  - fixed the frequency of the poly4-5 instrument
+
 - v1.0.1 - 29 Aug 2026
   - added a new poly9-poly17 instrument
   - rewrote mixer to fix frame length precision
@@ -26,12 +32,9 @@
 - v1.0.0 - 18 Aug 2026
   - initial release
 
-*/
-//---------------------------------------------------------------------------//  
-/*
 
-  Todo
-  ----
+  Notes
+  -----
   
 - 
 
@@ -90,7 +93,7 @@ extern void debug_message(const wchar_t* msg, int value) {
 //types and globals
 
 
-//arbitrary limit
+//this is an arbitrary implementation limit, can be raised if needed
     #define NUM_CHANNELS 32
 
 
@@ -195,7 +198,6 @@ DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
     return &BufferDescriptor;
 }
 
-
 WAVEFORMATEX* describe_format(int sample_rate) {
     //fills and returns a directsound format descriptor structure
     
@@ -211,7 +213,6 @@ WAVEFORMATEX* describe_format(int sample_rate) {
     FormatDescriptor.cbSize = 0;
     return &FormatDescriptor;
 }
-
 
 void dll_init(HWND hwnd, int sample_rate, int channels) {
     //initializes all systems
@@ -297,7 +298,6 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
         );    
 }
 
-
 int secondary_buffer_query() {
     //finds out how much data dsound wants to consume
     
@@ -335,7 +335,6 @@ int secondary_buffer_query() {
     //size of required buffer fill
         return write_size;
 }
-
 
 void secondary_buffer_fill(int amount) {
     //consumes data from the tertiary buffer, copying it to the
@@ -389,13 +388,11 @@ void secondary_buffer_fill(int amount) {
         ));
 }
 
-
 void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD) {
-    //called in the multimedia timer thread, 
+    //called in the multimedia timer thread to update dsound
     
     pokey_timer_callback();
 }
-
 
 void copy_settings(volatile pokey_settings* from,volatile pokey_settings* to) {
     //used to copy settings structs
@@ -423,13 +420,11 @@ GMREAL __pokey_dll_init(double hwnd_real, double samplerate_real, double channel
     return 0;
 }
 
-
 GMREAL __pokey_dll_update(double gen_real) {    
     pokey_frame_update(gen_real);
     
     return 0;
 }
-
 
 GMREAL __pokey_sound(double channel, double type, double freq, double vol, double pan) {
     pokey_set_channel(
@@ -443,18 +438,15 @@ GMREAL __pokey_sound(double channel, double type, double freq, double vol, doubl
     return 0;
 }
 
-
 GMREAL __pokey_set_volume(double volume) {
     pokey_set_volume(volume);
     
     return 0;
 }
 
-
 GMREAL __pokey_get_voices() {
-    return pokey_get_voices();
+    return (double)pokey_get_voices();
 }
-
 
 GMREAL __pokey_get_tuning(double type) {
     return pokey_tuning[(int)type];
@@ -489,7 +481,6 @@ void pokey_init() {
     pokey_timer_callback();
 }
 
-
 int get_tertiary_health() {
     //returns the amount of data ready to be used in the tertiary buffer
     
@@ -498,7 +489,6 @@ int get_tertiary_health() {
     else
         return tert_writepos - tert_readpos;
 }
-
 
 void pokey_set_channel(int channel, unsigned char type, double freq, float vol, float pan) {
     //changes the settings for a channel
@@ -509,14 +499,12 @@ void pokey_set_channel(int channel, unsigned char type, double freq, float vol, 
     pokey_settings_a.chan_pan[channel] = pan;
 }
 
-
 void pokey_set_volume(double maxvol) {
     //changes the maximum mixer volume after all channels are added together
     //(in log scale)
     
     pokey_maxvol = maxvol * maxvol;
 }
-
 
 void pokey_frame_update(double amount_ms) {
     //updates the generator settings, and generates one frame of audio
@@ -533,7 +521,6 @@ void pokey_frame_update(double amount_ms) {
     pokey_generate(amount);
 }
 
-
 int pokey_get_voices() {
     //returns the number of channels with valid sound-producing settings
     
@@ -547,7 +534,6 @@ int pokey_get_voices() {
     
     return chancount;
 }
-
 
 void pokey_timer_callback() {
     //every time it's invoked from the timer thread, supplies
@@ -579,7 +565,6 @@ int poly4(unsigned char channel) {
     return r&1;
 }
 
-
 int poly5(unsigned char channel) {
     int r = pokey_lfsr_reg5[channel];
     r = (((r + r)) + (((r >> 2) ^ (r >> 4)) & 1)) & 0x1f;
@@ -587,14 +572,12 @@ int poly5(unsigned char channel) {
     return r&1;
 }
 
-
 int poly9(unsigned char channel) {
     int r = pokey_lfsr_reg9[channel];
     r = ((r >> 1)) + (((r << 8) ^ (r << 3)) & 0x100);
     pokey_lfsr_reg9[channel] = r;
     return r&1;
 }
-
 
 int poly17(unsigned char channel) {
     int r = pokey_lfsr_reg17[channel];
@@ -606,22 +589,31 @@ int poly17(unsigned char channel) {
 
 //---------------------------------------------------------------------------//
 //main synth core
-//sorry, too complicated for 80 col...
+//sorry, too ugly for 80 col formatting...
 
 
 void pokey_generate(int amount) {
-    //generates an amount of samples, using the current settings,
+    //generates an amount of samples using the current settings,
     //and stores it in the tertiary buffer.
     
     //build a list of the active voices, to save branches in the mixer loop
     //also calculates the volume normalization reciprocal
-        int chanid[NUM_CHANNELS];
-        int type[NUM_CHANNELS];
-        double frequency[NUM_CHANNELS], period[NUM_CHANNELS];
-        double pan_left[NUM_CHANNELS], pan_right[NUM_CHANNELS];
+        int
+            chanid[NUM_CHANNELS],
+            type[NUM_CHANNELS],
+            channel,
+            addr,
+            chancount = 0;
         
-        int chancount = 0;
-        double mix_normal = 0;
+        double
+            frequency[NUM_CHANNELS],
+            period[NUM_CHANNELS],
+            pan_left[NUM_CHANNELS],
+            pan_right[NUM_CHANNELS],
+            mix_left,
+            mix_right,
+            mix_normal = 0;
+        
         REPEAT(channel, pokey_active_channels) {
             type[channel] = pokey_settings_b.chan_type[channel];
             frequency[channel] = pokey_settings_b.chan_freq[channel] * pokey_tuning[type[channel]];
@@ -635,25 +627,22 @@ void pokey_generate(int amount) {
                 chancount++;
             }
         }
+        
         if (mix_normal < 1) mix_normal = 1.0;
         mix_normal = pokey_maxvol / mix_normal;
     
     
     //main mixer core    
-        double mix_left, mix_right;
-        int channel;
-        int addr;
-        
         for (int sample = 0; sample < amount; sample += 2) {
             mix_left = 0;
             mix_right = 0;
             
             //for each channel, we generate audio data and add it to the stereo mix accumulators
             REPEAT(i, chancount) {
-                channel=chanid[i];
+                channel = chanid[i];
                 
                 if (type[channel] < 0x3) {
-                    //pulse types - per-sample duty cycle, and latch-off for period change protection
+                    //pulse types - per-sample iteration, and latch-off for period change protection
                     ++pokey_clock_accumulator[channel];
                     if (pokey_clock_accumulator[channel] >= period[channel]) {
                         pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel],period[channel]);
@@ -662,7 +651,7 @@ void pokey_generate(int amount) {
                         pokey_channel_signal[channel] = 0;
                     }
                 } else {
-                    //poly types - iterate at period crossings
+                    //poly types - iterate only at period crossings for better performance
                     ++pokey_clock_accumulator[channel];
                     if (pokey_clock_accumulator[channel] >= period[channel]) {
                         pokey_clock_accumulator[channel] = fmod(pokey_clock_accumulator[channel],period[channel]);

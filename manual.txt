@@ -1,9 +1,10 @@
+-------------------------------------------------------------------------------
 
 
     RENEX POKEY
     ===========
-    v1.0.2
-    4 Sep 26
+    v1.0.3
+    6 Sep 2026
 
 
   A modern, high quality implementation of a POKEY-style sound engine.
@@ -16,6 +17,9 @@
   Changelog
   ---------
   
+
+- v1.0.3 - 6 Sep 26
+  - fixed a bug that broke multiple sound channels
 
 - v1.0.2 - 4 Sep 26  
   - added function pokey_set_volume
@@ -41,7 +45,7 @@
   generators using basic pulse and noise models. When you think of "dat Atari
   sound doe", yep, that's a POKEY chip in action.
 
-  This extension provides a modern reimplementation of the sound core of the
+  This extension provides a modern implementation of the sound core of the
   POKEY chip, with customizable channel counts, high quality audio output,
   and accurate frequency tuning and stereo panning values, for use in realtime
   sound generation in video games and music applications.
@@ -58,7 +62,8 @@
   perfectly emulate the chip itself, any duplicates, buggy, or silent
   instrument slots have been removed. Additionally, all instrument types have
   been pitch shifted such that the output pitch matches the set input
-  frequency, and the known broken frequency values have not been reproduced.
+  frequency, and we've decided to omit the known broken frequency values.
+  
   We also supply a 12.5% duty square wave, which was not originally present as
   a preset, but is frequently used in 'retro' soundscapes which felt relevant
   to include.
@@ -120,7 +125,9 @@
   - volume: volume value (0-1)
   
     Sets the overall volume level for the pokey engine.
-    Active channels are normalized to this value when they are mixed.
+    Active channels are normalized to this value when mixed together,
+    to prevent clipping over 100%. We use log curve modelled volume, which
+    means that 50% is half as loud as 100%, and 25% is half as loud as 50%.
 
 
 - pokey_sound(channel,type,freq,vol,pan)
