@@ -466,7 +466,7 @@ GMREAL __pokey_get_tuning(double type) {
 
 
 void pokey_init() {
-    //initializes the pokey engine with deefault settings,
+    //initializes the pokey engine with default settings,
     //and fills the buffer with a little silence.
     
     pokey_maxvol = 1.0;
@@ -610,7 +610,7 @@ int poly17(unsigned char channel) {
 
 
 void pokey_generate(int amount) {
-    //generates an amount of sound in ms, using the current settings,
+    //generates an amount of samples, using the current settings,
     //and stores it in the tertiary buffer.
     
     //build a list of the active voices, to save branches in the mixer loop
@@ -623,15 +623,15 @@ void pokey_generate(int amount) {
         int chancount = 0;
         double mix_normal = 0;
         REPEAT(channel, pokey_active_channels) {
-            type[chancount] = pokey_settings_b.chan_type[channel];
-            frequency[chancount] = pokey_settings_b.chan_freq[channel] * pokey_tuning[type[chancount]];
+            type[channel] = pokey_settings_b.chan_type[channel];
+            frequency[channel] = pokey_settings_b.chan_freq[channel] * pokey_tuning[type[channel]];
             if (frequency[channel] > 0 && pokey_settings_b.chan_vol[channel] > 0) {
                 //active channel; add to render list
-                period[chancount] = buffer_sample_rate / frequency[channel];
-                pan_left[chancount] = min(1.0, 1.0 - pokey_settings_b.chan_pan[channel]) * pokey_settings_b.chan_vol[channel];
-                pan_right[chancount] = min(1.0, pokey_settings_b.chan_pan[channel] + 1.0) * pokey_settings_b.chan_vol[channel];
-                chanid[chancount] = channel;
+                period[channel] = buffer_sample_rate / frequency[channel];
+                pan_left[channel] = min(1.0, 1.0 - pokey_settings_b.chan_pan[channel]) * pokey_settings_b.chan_vol[channel];
+                pan_right[channel] = min(1.0, pokey_settings_b.chan_pan[channel] + 1.0) * pokey_settings_b.chan_vol[channel];
                 mix_normal += pokey_settings_b.chan_vol[channel];
+                chanid[chancount] = channel;
                 chancount++;
             }
         }
