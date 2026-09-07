@@ -99,7 +99,7 @@
   
   pk_poly917 (8): Poly 9 -> Poly 17
   - A 9-bit polynomial counter, lowpassed by a 17-bit polynomial counter.
-    Sounds like rushing water
+    Sounds like rushing water.
 
 
 -------------------------------------------------------------------------------
@@ -109,8 +109,8 @@
 
 
 - pokey_init(samplerate,channels)
-  - samplerate: audio sample rate (8000-48000)
-  - channels: number of channels (1-32)
+  - samplerate: audio sample rate (8000 - 48000)
+  - channels: number of channels (1 - 32)
 
     Starts the sound engine with the desired settings.
     The sample rate is limited by the system's capabilities. Usually, values
@@ -122,7 +122,7 @@
 
 
 - pokey_set_volume(volume)
-  - volume: volume value (0-1)
+  - volume: volume value (0 - 1)
   
     Sets the overall volume level for the pokey engine.
     Active channels are normalized to this value when mixed together,
@@ -132,7 +132,7 @@
 
 - pokey_sound(channel,type,freq,vol,pan)
   - channel: channel to use (0 - 32)
-  - type: instrument id (0 - 6)
+  - type: instrument id (0 - 8)
   - freq: sound frequency in hz
   - volume: channel volume (0 - 1)
   - pan: channel pan (-1 - 1)
@@ -162,7 +162,7 @@
 
 
 - pokey_get_instrument_name(type)
-  - type: instrument id (0-7)
+  - type: instrument id (0-8)
 
     Returns a string with the name of the selected instrument. The returned
     strings are listed in the "Instruments" section of this document.
