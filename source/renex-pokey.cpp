@@ -186,10 +186,10 @@ void pokey_generate(int);
 //DirectSound and system boilerplate
 
 
-DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
+DSBUFFERDESC* describe_buffer(DWORD flags, WAVEFORMATEX* format, DWORD size) {
     //fills and returns a directsound buffer descriptor structure
     
-    memset(&BufferDescriptor,0,sizeof(BufferDescriptor));
+    memset(&BufferDescriptor, 0, sizeof(BufferDescriptor));
     BufferDescriptor.dwFlags = flags;
     BufferDescriptor.dwBufferBytes = size;
     BufferDescriptor.lpwfxFormat = format;
@@ -201,7 +201,7 @@ DSBUFFERDESC* describe_buffer(DWORD flags,WAVEFORMATEX* format,DWORD size) {
 WAVEFORMATEX* describe_format(int sample_rate) {
     //fills and returns a directsound format descriptor structure
     
-    memset(&FormatDescriptor,0,sizeof(FormatDescriptor));
+    memset(&FormatDescriptor, 0, sizeof(FormatDescriptor));
     FormatDescriptor.wFormatTag = WAVE_FORMAT_PCM;
     FormatDescriptor.nChannels = 2;
     FormatDescriptor.nSamplesPerSec = (DWORD)sample_rate;
@@ -278,7 +278,7 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
         tert_writepos = 0;
     
     
-    //set up 4th buffer for copy into the secondary
+    //set up the quaternary buffer used to simplify the copy into the secondary
         QuaternaryBuffer = (unsigned char*)malloc(tert_length);
     
     
@@ -329,7 +329,7 @@ int secondary_buffer_query() {
     
     //if we're running too fast or too slow, correct course
         if (write_size <= 0) return 0;
-        if (write_size>buffer_amount * 2) write_size = buffer_amount * 2;
+        if (write_size > buffer_amount * 2) write_size = buffer_amount * 2;
     
     
     //size of required buffer fill
@@ -346,7 +346,7 @@ void secondary_buffer_fill(int amount) {
     DWORD lock_size2;
     
     
-    //copy tertiary buffer to quaternary buffer
+    //copy enough data from tertiary buffer to quaternary buffer
         int start = tert_readpos;
         int end = start + amount;
         if (end > tert_length) {
@@ -394,7 +394,7 @@ void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD) {
     pokey_timer_callback();
 }
 
-void copy_settings(volatile pokey_settings* from,volatile pokey_settings* to) {
+void copy_settings(volatile pokey_settings* from, volatile pokey_settings* to) {
     //used to copy settings structs
     
     char* A = (char*)from;
@@ -410,7 +410,9 @@ void copy_settings(volatile pokey_settings* from,volatile pokey_settings* to) {
 //Game Maker interface
 
 
-GMREAL __pokey_dll_init(double hwnd_real, double samplerate_real, double channels_real) {
+GMREAL __pokey_dll_init(
+    double hwnd_real, double samplerate_real, double channels_real
+) {
     dll_init(
         (HWND)(int)hwnd_real,
         (int)samplerate_real,
@@ -426,7 +428,9 @@ GMREAL __pokey_dll_update(double gen_real) {
     return 0;
 }
 
-GMREAL __pokey_sound(double channel, double type, double freq, double vol, double pan) {
+GMREAL __pokey_sound(
+    double channel, double type, double freq, double vol, double pan
+) {
     pokey_set_channel(
         (int)channel,
         (unsigned char)type,
@@ -490,7 +494,9 @@ int get_tertiary_health() {
         return tert_writepos - tert_readpos;
 }
 
-void pokey_set_channel(int channel, unsigned char type, double freq, float vol, float pan) {
+void pokey_set_channel(
+    int channel, unsigned char type, double freq, float vol, float pan
+) {
     //changes the settings for a channel
     
     pokey_settings_a.chan_type[channel] = type;
@@ -527,7 +533,10 @@ int pokey_get_voices() {
     int chancount = 0;
     
     REPEAT(channel, pokey_active_channels) {
-        if (pokey_settings_b.chan_freq[channel] > 0 && pokey_settings_b.chan_vol[channel] > 0) {
+        if (
+            pokey_settings_b.chan_freq[channel] > 0
+        &&  pokey_settings_b.chan_vol[channel] > 0
+        ) {
             ++chancount;
         }
     }
@@ -589,7 +598,7 @@ int poly17(unsigned char channel) {
 
 //---------------------------------------------------------------------------//
 //main synth core
-//sorry, too ugly for 80 col formatting...
+//sorry, too deep for 80 col formatting...
 
 
 void pokey_generate(int amount) {
