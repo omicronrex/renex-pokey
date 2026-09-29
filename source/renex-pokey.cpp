@@ -13,32 +13,6 @@
 
 */
 //---------------------------------------------------------------------------//
-/*
-  Changelog
-  ---------
-
-
-- v1.0.3 - 6 Sep 26
-  - fixed a bug that broke multiple sound channels
-
-- v1.0.2 - 4 Sep 26  
-  - added function pokey_set_volume
-  - fixed the frequency of the poly4-5 instrument
-
-- v1.0.1 - 29 Aug 2026
-  - added a new poly9-poly17 instrument
-  - rewrote mixer to fix frame length precision
-
-- v1.0.0 - 18 Aug 2026
-  - initial release
-
-
-  Notes
-  -----
-  
-- 
-
-*/
 //---------------------------------------------------------------------------//
 //header
 
@@ -198,6 +172,7 @@ DSBUFFERDESC* describe_buffer(DWORD flags, WAVEFORMATEX* format, DWORD size) {
     return &BufferDescriptor;
 }
 
+
 WAVEFORMATEX* describe_format(int sample_rate) {
     //fills and returns a directsound format descriptor structure
     
@@ -213,6 +188,7 @@ WAVEFORMATEX* describe_format(int sample_rate) {
     FormatDescriptor.cbSize = 0;
     return &FormatDescriptor;
 }
+
 
 void dll_init(HWND hwnd, int sample_rate, int channels) {
     //initializes all systems
@@ -298,6 +274,7 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
         );    
 }
 
+
 int secondary_buffer_query() {
     //finds out how much data dsound wants to consume
     
@@ -335,6 +312,7 @@ int secondary_buffer_query() {
     //size of required buffer fill
         return write_size;
 }
+
 
 void secondary_buffer_fill(int amount) {
     //consumes data from the tertiary buffer, copying it to the
@@ -388,6 +366,7 @@ void secondary_buffer_fill(int amount) {
         ));
 }
 
+
 void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD) {
     //called in the multimedia timer thread to update dsound
     
@@ -422,6 +401,7 @@ GMREAL __pokey_dll_init(
     return 0;
 }
 
+
 GMREAL __pokey_dll_update(double gen_real) {    
     pokey_frame_update(gen_real);
     
@@ -442,15 +422,18 @@ GMREAL __pokey_sound(
     return 0;
 }
 
+
 GMREAL __pokey_set_volume(double volume) {
     pokey_set_volume(volume);
     
     return 0;
 }
 
+
 GMREAL __pokey_get_voices() {
     return (double)pokey_get_voices();
 }
+
 
 GMREAL __pokey_get_tuning(double type) {
     return pokey_tuning[(int)type];
@@ -485,6 +468,7 @@ void pokey_init() {
     pokey_timer_callback();
 }
 
+
 int get_tertiary_health() {
     //returns the amount of data ready to be used in the tertiary buffer
     
@@ -505,12 +489,14 @@ void pokey_set_channel(
     pokey_settings_a.chan_pan[channel] = pan;
 }
 
+
 void pokey_set_volume(double maxvol) {
     //changes the maximum mixer volume after all channels are added together
     //(in log scale)
     
     pokey_maxvol = maxvol * maxvol;
 }
+
 
 void pokey_frame_update(double amount_ms) {
     //updates the generator settings, and generates one frame of audio
@@ -526,6 +512,7 @@ void pokey_frame_update(double amount_ms) {
     
     pokey_generate(amount);
 }
+
 
 int pokey_get_voices() {
     //returns the number of channels with valid sound-producing settings
@@ -543,6 +530,7 @@ int pokey_get_voices() {
     
     return chancount;
 }
+
 
 void pokey_timer_callback() {
     //every time it's invoked from the timer thread, supplies
@@ -574,6 +562,7 @@ int poly4(unsigned char channel) {
     return r&1;
 }
 
+
 int poly5(unsigned char channel) {
     int r = pokey_lfsr_reg5[channel];
     r = (((r + r)) + (((r >> 2) ^ (r >> 4)) & 1)) & 0x1f;
@@ -581,12 +570,14 @@ int poly5(unsigned char channel) {
     return r&1;
 }
 
+
 int poly9(unsigned char channel) {
     int r = pokey_lfsr_reg9[channel];
     r = ((r >> 1)) + (((r << 8) ^ (r << 3)) & 0x100);
     pokey_lfsr_reg9[channel] = r;
     return r&1;
 }
+
 
 int poly17(unsigned char channel) {
     int r = pokey_lfsr_reg17[channel];
@@ -636,7 +627,6 @@ void pokey_generate(int amount) {
                 chancount++;
             }
         }
-        
         if (mix_normal < 1) mix_normal = 1.0;
         mix_normal = pokey_maxvol / mix_normal;
     
