@@ -18,6 +18,7 @@
     //The sample rate is limited by the system's capabilities.
     //Usually, values between 8000 and 48000 are acceptable.
     //You can use a lower sample rate as a sort of low-pass filter, depending on your stylistic preferences.
+    //You can pass 'false' or 'noone' to use the system's default sample rate for the highest quality playback.
     //The number of channels is the number of unique voices that can be played simultaneously, limited between 1 and 32.
     //This limit is not final, just let me know if you need more voices for your specific application.
     
@@ -28,17 +29,17 @@
     
     var sample_rate;
     
-    sample_rate=median(8000,argument0,48000)
+    if (argument0<=0) sample_rate=noone
+    else sample_rate=median(8000,argument0,48000)
     __pokey_channels=median(1,argument1,32)
     
-    __pokey_maxfreq=sample_rate div 2
-    
-    __pokey_dll_init(
+    sample_rate=__pokey_dll_init(
         window_handle(),
         sample_rate,
         __pokey_channels
     )
     
+    __pokey_maxfreq=sample_rate div 2
     __pokey_init=true
 
 

@@ -4,7 +4,7 @@ lib_id=1
 action_id=603
 applies_to=self
 */
-pokey_init(48000,1)
+pokey_init(0,1)
 
 note=0
 type=0

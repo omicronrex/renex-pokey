@@ -19,6 +19,8 @@
 #include <dsound.h>
 #include <stdio.h>
 #include <math.h>
+#include <initguid.h>
+#include <Mmdeviceapi.h>
 
 #pragma comment(lib,"dsound.lib")
 #pragma comment(lib,"Winmm.lib")
@@ -140,7 +142,7 @@ extern void debug_message(const wchar_t* msg, int value) {
 //function prototypes
 
 
-void dll_init(HWND, int, int);
+int dll_init(HWND, int, int);
 int secondary_buffer_query();
 void secondary_buffer_fill(int);
 void CALLBACK timer_callback(UINT, UINT, DWORD, DWORD, DWORD);
@@ -158,6 +160,42 @@ void pokey_generate(int);
 //---------------------------------------------------------------------------//
 //DirectSound and system boilerplate
 
+
+int system_get_primary_samplerate() {
+    //returns the sample rate of the default audio device,
+    //or a reasonable default if not possible
+    
+    HRESULT hr;
+    IMMDevice * pDevice = NULL;
+    IMMDeviceEnumerator * pEnumerator = NULL;
+    IPropertyStore* store = nullptr;
+    PWAVEFORMATEX deviceFormatProperties;
+    PROPVARIANT prop;
+
+    CoInitialize(NULL);
+
+    hr = CoCreateInstance(
+        __uuidof(MMDeviceEnumerator), NULL,
+        CLSCTX_ALL,
+        __uuidof(IMMDeviceEnumerator), (LPVOID *)&pEnumerator
+    );
+
+    hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
+
+    hr = pDevice->OpenPropertyStore(STGM_READ, &store);
+    if (FAILED(hr)) {
+        return 48000;
+    }
+
+    hr = store->GetValue(PKEY_AudioEngine_DeviceFormat, &prop);
+    if (FAILED(hr)) {
+        return 48000;
+    }
+
+    deviceFormatProperties = (PWAVEFORMATEX)prop.blob.pBlobData;
+
+    return deviceFormatProperties->nSamplesPerSec;
+}
 
 DSBUFFERDESC* describe_buffer(DWORD flags, WAVEFORMATEX* format, DWORD size) {
     //fills and returns a directsound buffer descriptor structure
@@ -187,10 +225,16 @@ WAVEFORMATEX* describe_format(int sample_rate) {
     return &FormatDescriptor;
 }
 
-void dll_init(HWND hwnd, int sample_rate, int channels) {
+int dll_init(HWND hwnd, int sample_rate, int channels) {
     //initializes all systems
     
-    buffer_sample_rate = sample_rate;
+    if (sample_rate < 8000) {
+        buffer_sample_rate = system_get_primary_samplerate();
+        debug_message(L"sample %i",buffer_sample_rate);
+    } else {
+        buffer_sample_rate = sample_rate;
+    }
+    
     pokey_active_channels = channels;
     
     
@@ -268,7 +312,9 @@ void dll_init(HWND hwnd, int sample_rate, int channels) {
             timer_callback,
             0,
             TIME_PERIODIC
-        );    
+        );
+    
+    return buffer_sample_rate;
 }
 
 int secondary_buffer_query() {
@@ -386,13 +432,11 @@ void copy_settings(volatile pokey_settings* from, volatile pokey_settings* to) {
 GMREAL __pokey_dll_init(
     double hwnd_real, double samplerate_real, double channels_real
 ) {
-    dll_init(
+    return (double)dll_init(
         (HWND)(int)hwnd_real,
         (int)samplerate_real,
         (int)channels_real
     );
-    
-    return 0;
 }
 
 GMREAL __pokey_dll_update(double gen_real) {    
