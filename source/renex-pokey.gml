@@ -43,13 +43,13 @@
     __pokey_init=true
 
 
-#define pokey_update()
+#define pokey_update
     ///pokey_update()
     //Updates the pokey engine with the latest instrument data.
     //Note that is is normally done automatically for you; you only need to call it manually if you're f.ex. in a deadlock for a loading screen or a room transition.
     //Otherwise, do not call this function.
     
-    if (__pokey_init) __pokey_dll_update(1000/room_speed)
+    if (__pokey_init) __pokey_dll_update(0)
 
 
 #define pokey_sound
@@ -101,6 +101,7 @@
     
     if (__pokey_init) {
         __i=0 repeat (__pokey_channels) {__pokey_sound(__i,0,0,0,0) __i+=1}
+        __pokey_dll_update(0)
     }
     
     

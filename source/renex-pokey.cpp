@@ -3,8 +3,8 @@
 
     RENEX POKEY
     ===========
-    v1.0.3
-    6 Sep 2026
+    v1.0.4
+    1 Nov 2026
   
   
   A modern, high quality reimplementation of a POKEY-style sound engine.
@@ -230,7 +230,6 @@ int dll_init(HWND hwnd, int sample_rate, int channels) {
     
     if (sample_rate < 8000) {
         buffer_sample_rate = system_get_primary_samplerate();
-        debug_message(L"sample %i",buffer_sample_rate);
     } else {
         buffer_sample_rate = sample_rate;
     }

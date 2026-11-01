@@ -1,9 +1,9 @@
 {
 	"name": "renex pokey",
 	"folder": "gm82",
-	"version": "1.0.2",
+	"version": "1.0.4",
 	"author": "renex",
-	"date": "04/09/2026",
+	"date": "01/11/2026",
 	"license": "Free to use, also for commercial games.",
 	"description": "A modern, high quality implementation of a POKEY-style sound engine.",
 	"helpfile": "",

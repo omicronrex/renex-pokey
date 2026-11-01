@@ -3,8 +3,8 @@
 
     RENEX POKEY
     ===========
-    v1.0.3
-    6 Sep 2026
+    v1.0.4
+    1 Nov 2026
 
 
   A modern, high quality implementation of a POKEY-style sound engine.
@@ -17,6 +17,11 @@
   Changelog
   ---------
   
+
+- v1.0.4 - 1 Nov 26
+  - fixed pokey_update() doing nothing
+  - removed a debug message when initializing with no sample rate
+  - pokey_stop() now updates instantly
 
 - v1.0.3 - 6 Sep 26
   - fixed a bug that broke multiple sound channels
@@ -182,9 +187,9 @@
 
 - pokey_update()
     Updates the pokey engine with the latest instrument data.
-    Note that is is normally done automatically for you; you only need to
-    call it manually if you're f.ex. in a deadlock for a loading screen or
-    a room transition. Otherwise, do not call this function.
+    Note that is is normally done automatically for you; you only need to call
+    it manually if you're f.ex. changing sound settings in a deadlock for a
+    loading screen or a room transition. Otherwise, do not call this function.
 
 
 -------------------------------------------------------------------------------
